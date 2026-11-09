@@ -1,0 +1,42 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Django
+staticfiles/
+media/
+*.sqlite3
+
+# React
+node_modules/
+dist/
+coverage/
+
+# Databases and exports
+pgdata/
+*.sql
+*.dump
+*.backup
+
+# Confidential warehouse data
+*.xlsx
+*.xls
+*.csv
+imports/*
+!imports/.gitkeep
+
+# Editor and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
