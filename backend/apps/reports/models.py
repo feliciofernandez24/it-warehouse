@@ -1,1 +1,1 @@
-"""Reports application; reserved for a later phase."""
+"""Reports derive from inventory, movement, assignment and audit queries; no tables."""
