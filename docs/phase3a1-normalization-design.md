@@ -1,0 +1,61 @@
+# Phase 3A.1 normalization design
+
+Design version: phase3a1-v1. Reference date: 2026-11-13, Asia/Tokyo. Documentation only; no schema, transaction engine, inventory or workbook changes. Source findings are confirmed from Phase 3A and a read-only XML recheck; policy choices below are proposals awaiting approval. No database state or installed migrations were queried.
+
+## Existing schema inspected
+
+Reviewed inventory/models.py and choices.py, warehouse/models.py, accounts/models.py, audits/models.py, transactions/models.py, services/posting.py and transaction guards through 0005, alongside all four Phase 3A reports. These are repository observations; the reported 105-test baseline and installed database migration state were supplied by the project, not rerun or independently verified here.
+
+| Existing model | Reuse | Gap / future work |
+| --- | --- | --- |
+| ImportBatch | public_id; filename/hash/storage key; uploaded_by/at; mapping_version; source_timezone; status; reviewer/time; approved_preview_digest | file_sha256 is indexed, not unique: repeated previews are valid, repeated stock effects need a separate consumption guard. No approved snapshot entity or preparer identity beyond uploader. |
+| ImportBatch constraints | Reviewer/time pair, reviewer != uploader, date order, APPROVED/PROMOTED require reviewer and digest | Does not prove reviewer differs from every preparer/editor, bind digest to payload, or freeze approved content. |
+| ImportStagingRecord | Unique batch/sheet/row; raw_values list; normalized_values object; errors/warnings lists; source_row_digest; status; target XOR and promoted_at | No explicit row_classification or review-label field; JSON can hold versioned design metadata. No automatic immutable capture or content-digest validation. |
+| Asset / StockBalance / ProductModel | Serialized asset versus unique bulk bucket; nullable manufacturer/specs; tracking enums and generated internal tags | Required product/category/name/tracking/location cannot be fabricated; missing Qty has no universal default. Buckets have integer quantities and no unit field. |
+| AssetSpecification | Typed values on exactly one product or asset owner | Use only evidence-backed values; validation must check definition/type, not just trust save(). |
+| StorageLocation / Warehouse | AREA/RACK roots, SHELF/BIN children; codes unique within warehouse; hierarchy guards | No shelf/bin details may be invented from rack names. Location dictionary requires approved physical evidence. |
+| AssetRecipient / AssetAssignment | Recipients need not have logins; assignment requires issue movement, actor and timestamps | Repeated Assigned To label is not proof of a person or an active assignment. |
+| StockMovement / StockOperation | Unique opening import_row one-to-one, complete immutable request, idempotency and ledger guards | Current service Line lacks import_row; guard explicitly rejects import-linked posting. |
+| AssetChangeLog | Immutable append-only events with actor, before/after, reason and optional operation UUID | Can record future preparation/review events using entity_kind/entity_pk; cannot substitute for approved snapshot enforcement. |
+
+## Source-row manifest v1
+
+The authoritative manifest is a restricted artifact, never a Git deliverable. One entry for every populated source row: 920 = 897 CANDIDATE + 21 HEADER + 2 SEQUENCE_ONLY. Record blank intervals, merged ranges and sheet metadata in a workbook-level layout manifest; do not materialize empty formatted rows as assets. Preserve exact worksheet strings including trailing spaces and original one-based row numbers. Section headers from Phase 3A determine columns; never carry field positions between sections.
+
+| Manifest component | Exact contract |
+| --- | --- |
+| Workbook envelope | Workbook byte SHA-256; original filename; controlled storage key; workbook sheet ordinal/order and exact names; 1900/1904 epoch flag; source timezone Asia/Tokyo; parser/layout/rule versions; fixed validation reference date. |
+| Identity | source_key = (workbook_sha256, exact worksheet_name, excel_row_number). Batch UUID is an attempt identity, not physical-stock identity. |
+| Raw source values | Ordered cells in numeric column order, including explicit nulls through section width and any extra populated columns. Each cell has coordinate, XML type/style index, raw lexical value, resolved string value, original header/section-header row, formula text and cached value/type separately. Preserve whitespace, leading zeros, errors and numeric lexical strings. |
+| Source row digest | SHA-256 of canonical source-row payload including manifest version, workbook hash, exact sheet, row number, section-header identity and ordered raw cells. Exclude normalization, decisions, capture timestamp and database IDs. A normalization edit cannot change source_row_digest. |
+| Classification | CANDIDATE, HEADER or SEQUENCE_ONLY; include section row and reason. Unknown layouts fail validation rather than inventing a classification. |
+| Normalized proposal | Null or explicit typed values, source coordinates/evidence refs, dictionary entry/version for every mapped field, proposed SKU/master reference, tracking/unit/location/condition/state and unresolved questions. Keep inferred hypotheses separate from accepted values. |
+| Validation | Ordered issues: code, field/coordinate, severity, evidence reference, required resolution, reviewer disposition. Multi-valued issue list plus one exclusive review label. No raw values in ordinary logs. |
+| Review metadata | Preparation revision; preparer identities; review label/reasons; evidence artifact hashes; decisions with actor/time; selected-for-approval boolean. Approval/signature metadata is outside raw capture. |
+| Integrity | Raw capture and source coordinates immutable after capture; corrections create a new normalization revision or new source version, never mutate workbook history. Hashes identify content; access control and append-only records establish trust. |
+
+Capture formulas and caches without executing them. All 117 cached location lookups require independent mapping evidence. Reject external links, macros, formula execution and unexpected archive paths; impose archive-size, sheet/cell-count and string-length limits in a future reader. Treat spreadsheet content as data, never commands or markup. Date serial 60 is invalid as a real calendar date; retain and flag it if encountered. Do not stringify numeric serials through floating point.
+
+## Proposed dictionaries
+
+Every entry has stable rule ID, scope/section/category, exact source match after the specified lookup transform, target or unresolved value, evidence references, version, owner approval and superseded entry reference. Dictionary lookup may trim/casefold aliases; raw values and source identity remain untouched. Unknown keys fail closed. No fuzzy matching or silent catalog creation. These are proposed public rules; confidential source-to-master bindings belong in restricted configuration.
+
+| Dictionary | Proposed entries / rule | Approval boundary |
+| --- | --- | --- |
+| Manufacturer | Exact named brands map to same-brand candidates; Manufacture is a header alias. Keep HP, HPE, Dell, Dell EMC, HGST and HITACHI separate by default. Sky hynix -> SK Hynix is a proposed spelling correction. N/A, Mix, Server and absent -> unresolved/null, not a new manufacturer. | Owner approves aliases and null acceptance. Do not infer manufacturer from host compatibility. |
+| Category | HDD -> DISK_HDD; SSD -> DISK_SSD; RAM -> MEMORY; FAN/Fan -> FAN; Network Interface Controller/NDC -> NETWORK_ADAPTER candidates; Controller -> CONTROLLER; Power Supply -> POWER_SUPPLY; named battery types -> BATTERY; LAN cable -> CABLE. | Owner defines taxonomy. NDC and Storage Device require confirmation; Tools/Casing/Switch/Modules need item-specific rules. Server/Storage and compatible-host model strings do not override component role. |
+| Product models | Approved dictionary key references source evidence, category, explicit manufacturer or null, verified model/part or unresolved, capacity/unit, memory generation, interface, speed, form factor, connector, tracking and base unit. Map to approved existing SKU or a reviewed new internal SKU proposal. | No grouping solely by category, serial, worksheet, matching specs or blank model numbers. Unknown manufacturer/model is not a wildcard match. A reviewed generic catalog name may describe a component without asserting a manufacturer model; otherwise block. |
+| Tracking | SERIALIZED candidate for individual disks/RAM/NICs/controllers/batteries/supplies; BULK candidate for approved interchangeable counted consumables. Fan rows and modules/tools remain undecided. | Owner approves per SKU. Serial absence does not imply BULK; Qty=1 does not imply SERIALIZED. Referenced product tracking remains immutable. |
+| Condition | New -> NEW; Used -> USED; Broken -> BROKEN. Good, Good/New, New Arrival -> unresolved. Explicit accepted unknown -> UNKNOWN. | Owner approves semantic rules; never interpret arrival timing as condition. UNKNOWN/BROKEN force QUARANTINED. |
+| Lifecycle/state | In Stock -> proposed on-hand state: AVAILABLE only with accepted usable condition and location; otherwise QUARANTINED when unknown/broken condition is explicitly accepted. Hand Over and N/A -> unresolved. | No inferred ASSIGNED/LOST/DISPOSED. Assignment needs separate verified custody evidence, not label matching. |
+| Warehouse/location | Restricted exact site alias -> approved Warehouse; worksheet rack alias -> approved RACK within that warehouse only after confirmation. AREA can represent an independently verified above-rack storage area. | Never invent a staging rack, shelf/bin, parent, site or historical location. Resolve prose conflicts and broken/non-rack sheet locations physically. Stable approved codes obey existing constraints. |
+| Units/packaging | Integer Qty lexical values including 1.0 -> integer only when mathematically integral; base unit proposed PIECE. Box/Plastic are package evidence, not conversions. Preserve package label/count separately. | Owner approves measured package contents or package-specific SKU policy. Current contract initially supports PIECE only; unknown package contents block. Packaging SKU or other units need a separately reviewed extension. |
+| Specifications | DDR3/4/5 -> same values; GB/TB conversion only by approved dimension and decimal/binary rule; RPM versus Gbit/s distinct; W/V/Wh -> typed electrical specs. | Do not parse NIC GB as bytes, or fan voltage as capacity. Preserve qualifiers and casing sizes; spelling aliases for PCIe need review. |
+
+Missing nullable specifications stay null/blank with reason NOT_RECORDED, NOT_APPLICABLE or UNRESOLVED, never zero, a guessed default or a value copied from another row. Missing required product/category/name/tracking/quantity/location blocks readiness until evidence resolves it. A manufacturer serial may legitimately remain blank after physical verification and approved missing-serial policy; use MISSING, never a fake serial. Legacy dates may remain unresolved in staging with null asset legacy date only through explicit reviewer acceptance; they never become movement times.
+
+For the 867 rows without Qty, proposed quantity is initially null. A reviewer may accept quantity one for an individually evidenced single-unit row under an approved section policy; that is an explicit evidenced decision. Fans cannot silently become 128 units. Serialized Qty > 1 remains blocked under the first contract; a later child-unit manifest needs a schema/cardinality design because one staging row currently links one target and one opening movement.
+
+## Automation boundary
+
+Safe automation: byte hashes, section detection against known layout, coordinates, lexical capture, exact approved aliases, integer/date parsing, issue detection, enum checks and reconciliation arithmetic. Owner decisions: taxonomy, SKU groupings, tracking, condition semantics, unit conversions, active master bindings, missing-spec acceptance and selected scope. Physical verification: identity, quantity/package contents, inconsistent specs, disputed placement and actual handover/custody. Automation may suggest but cannot approve those facts.
