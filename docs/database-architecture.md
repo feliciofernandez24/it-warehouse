@@ -1,4 +1,6 @@
-# Database architecture - Phase 2B
+# Database architecture - Phase 2B baseline and Phase 2C extension
+
+The Phase 2C extension is documented in [transaction engine](phase2c-transaction-engine.md), [security review](phase2c-security.md), [testing evidence](phase2c-testing.md) and [runbook](phase2c-operations-runbook.md). It adds StockOperation and posting guards; deployment/runtime-role integration and full audit reconciliation remain pending. The following Phase 2B sections are a historical baseline, not a description of current service availability.
 
 Phase 2B implements the schema approved in Phase 2A, with AssetRecipient added by request. Phase 2C posting services, APIs, imports and frontend behavior are not implemented. See the [exact generated field/constraint/index reference](phase2b-model-reference.md), [ERD](database-erd.md), [migration SQL](phase2b-migration-sql.md), [implementation plan](phase2-implementation-plan.md) and [validation report](phase2b-validation.md).
 
@@ -90,3 +92,7 @@ Reports need no extra tables: category unit totals (serialized count separately 
 accounts.0001 -> existing auth; warehouse.0001 independent; inventory.0001 -> warehouse/auth; audits.0001 -> inventory/warehouse/auth; transactions.0001 -> accounts/audits/inventory/warehouse/auth; transactions.0002 -> transaction/audit/inventory initial schemas. No reciprocal FK from staging/audits to movement, hence no circular dependency. Forward SQL creates new schema objects and adds constraints; no destructive operation or live stock DML. Reverse guard SQL is provided for controlled rollback, not executed against development.
 
 References: [Django constraints](https://docs.djangoproject.com/en/5.2/ref/models/constraints/), [Django migrations](https://docs.djangoproject.com/en/5.2/topics/migrations/), [PostgreSQL trigger functions](https://www.postgresql.org/docs/17/plpgsql-trigger.html). Operational review decisions remaining: recipient identity matching/retention, piece versus measured units, audit freeze duration, approval staffing, posting privilege boundary and reversal/cutover policy.
+
+## Phase 2C schema extension
+
+transactions.0003 adds StockOperation (UUID operation_key PK, complete request JSON, fingerprint, requester/time, independent approver/time/reason and posted_at). transactions.0004 adds invoker posting/conservation/custody/hierarchy/audit guards and hardens existing function search paths. Existing stock/history or active audits fail the migration preflight pending reviewed cutover. transactions.0005 atomically replaces only movement_not_noop_transfer to permit real same-location serialized condition/state reclassification. Other Phase 2B constraints/triggers remain. Operation-key movement identity is enforced by SQL triggers without renaming existing columns. The new header is durable approval/idempotency evidence; the old statement that no header is needed is superseded.

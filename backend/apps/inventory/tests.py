@@ -23,6 +23,20 @@ from apps.warehouse.models import LocationKind, StorageLocation, Warehouse
 
 
 class SchemaTests(TestCase):
+    """Historical Phase 2B contract, validated against the actual Phase 2B migration state."""
+    @classmethod
+    def setUpClass(cls):
+        from django.db.migrations.executor import MigrationExecutor
+        cls.latest = MigrationExecutor(connection).loader.graph.leaf_nodes()
+        MigrationExecutor(connection).migrate([("transactions", "0003_stockoperation")])
+        super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        from django.db.migrations.executor import MigrationExecutor
+        MigrationExecutor(connection).migrate(cls.latest)
+
     @classmethod
     def setUpTestData(cls):
         cls.user = get_user_model().objects.create_user(username="operator")

@@ -40,3 +40,7 @@ PostgreSQL TransactionTestCase tests use two independent connections for competi
 - Decide measured cable units, retention/privacy, audit freeze staffing, recipient matching and already-assigned cutover/reversal policy.
 
 No Phase 2C service or API is authorized by this completed schema phase. Stop after Phase 2B validation.
+
+## Phase 2C implementation update ? 2026-11-13
+
+The user's Phase 2C request supersedes the earlier separate-approval prerequisite. Services, operation evidence, guards, role provisioning template, reconciliation, counting foundation and PostgreSQL tests are now implemented; see phase2c-transaction-engine.md and phase2c-testing.md. Development credential repair, production role deployment and full audit closing remain explicitly unfinished. No Excel/import/frontend/API work, commit or push was performed.

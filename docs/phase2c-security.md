@@ -1,0 +1,27 @@
+# Phase 2C security review
+
+## Authorization and approval
+
+Default deny. Explicit Django user/group permissions are queried fresh from the database; is_staff and is_superuser confer no posting capability. Actors are reloaded rather than trusting caller-mutated flags. Distinct receive_stock, issue_stock, transfer_stock, return_stock, request_adjustment, request_disposal, approve_adjustment, approve_disposal and review_audit_adjustment capabilities are required. Reclassification uses transfer_stock. The requester must retain its posting capability; the approver must remain active and retain the approval capability at posting. SQL movement guards independently check explicit actor/approver permissions.
+
+`provision_stock_roles` creates named groups and adds capabilities, without assigning users or removing existing grants. Administrator receives stock and approval capabilities but cannot self-approve. Warehouse Operator receives receive/issue/transfer/return and adjustment/disposal request capabilities. IT Engineer receives transfer/return. Auditor receives ledger/custody/operation view and audit-review capabilities. Group membership and any pre-existing excess permissions need operator review. There is no implicit warehouse scope.
+
+Approval actor/time/reason live on the immutable complete request. Approval cannot be reassigned or rewritten after approval, even before posting. Posted operations cannot be changed or deleted. Self-approval fails in services and a database CHECK. Requests containing both disposal and adjustment require both approver capabilities. Directly supplied approved=True is unsupported.
+
+## PostgreSQL guards and ownership
+
+0002 immutable history, identity and mode protections remain installed. 0004 pins existing and new function search_path to pg_catalog, public, pg_temp; new table references are schema-qualified. All functions are SECURITY INVOKER, with no elevated function owner privilege or SECURITY DEFINER entry point. Triggers cover direct ORM/raw SQL writes as well as service calls. Deferred checks reject isolated quantity/asset changes at transaction commit. Movements must match open operations and the ledger must conserve balances. Existing DELETE history guards remain. 0005 replaces the no-op transfer CHECK transactionally to permit actual serialized reclassification while retaining no-op rejection; no history is changed.
+
+Functions retain PostgreSQL default EXECUTE grants (normally PUBLIC); invoker rights require underlying table privileges. Deployment must inspect pg_proc ACLs, schema ownership and public-schema CREATE grants. PUBLIC/schema users must not be allowed to create/shadow application objects. No runtime role may own tables/functions or possess TRUNCATE, CREATE, superuser, role-admin, bypass-RLS or trigger-disable authority. A separate owner connection runs migrations. database/phase2c-runtime-role.sql.example is an unexecuted, reviewable NOLOGIN group-role template; it changes no existing privileges or passwords. Provision a separate secure login and membership only after deployment review; configure runtime versus migration connections separately. There are no destructive automatic privilege changes.
+
+Read-only development inspection on 2026-11-13 found PostgreSQL 17.11 and role it_warehouse with rolsuper, rolcreaterole, rolcreatedb and rolbypassrls all true. It is not a suitable production runtime role. Existing stock tables were empty and migrations were at transactions.0002. Configured .env authentication fails; credentials and owner privileges were left unchanged. Deployment migration/application health remain blocked until configuration is repaired by the operator.
+
+## Trust and bypass limits
+
+The backend authenticates end users and supplies actor identities. An attacker who fully controls its SQL connection can impersonate an authorized actor or manufacture a matching operation/approval; these invoker guards are not independent authentication of a human approver. A database owner/superuser can disable triggers, rewrite functions, TRUNCATE or otherwise bypass all ordinary DML guards. Trigger enforcement proves coherent authorized-shaped writes under the trusted backend, not safety against a compromised owner/backend. A stronger approval trust boundary would require independently authenticated approval credentials or externally verifiable signed evidence and a reviewed deployment design. This remains an explicit deployment risk, not a hidden claim of isolation.
+
+The new suite exercises receipt and mutation rejection under a non-owner, non-superuser role and proves CREATE, TRUNCATE and trigger disable are denied. That disposable role is created and rolled back only in the test transaction. No persistent runtime role or live credentials were altered.
+
+## Cutover and evidence
+
+The guard migration refuses existing assets, movements, nonzero balances or active audits rather than guessing opening balances or rewriting custody/history. A populated installation requires a separately reviewed cutover migration. No stock is seeded into development. Audit expected snapshots and recorded observations cannot be rewritten; submitted/closed audit evidence is frozen. Raw/approved import evidence hardening and specification-definition type consistency remain Phase 2B limitations because no import or specification service is introduced here. No inventory admin edit path or REST endpoint is added.

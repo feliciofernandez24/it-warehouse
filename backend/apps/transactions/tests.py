@@ -14,6 +14,20 @@ from apps.warehouse.models import StorageLocation, Warehouse
 
 
 class PostgreSQLTransactionTests(TransactionTestCase):
+    """Historical schema concurrency contract; Phase 2C has separate live posting tests."""
+    @classmethod
+    def setUpClass(cls):
+        from django.db.migrations.executor import MigrationExecutor
+        cls.latest = MigrationExecutor(connections["default"]).loader.graph.leaf_nodes()
+        MigrationExecutor(connections["default"]).migrate([("transactions", "0003_stockoperation")])
+        super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        from django.db.migrations.executor import MigrationExecutor
+        MigrationExecutor(connections["default"]).migrate(cls.latest)
+
     def setUp(self):
         user = get_user_model().objects.create_user(username="concurrent-operator")
         site = Warehouse.objects.create(code="TX", name="Transaction tests")

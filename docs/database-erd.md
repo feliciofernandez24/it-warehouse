@@ -1,6 +1,6 @@
-# PostgreSQL ERD - Phase 2B
+# PostgreSQL ERD - Phase 2B with Phase 2C operation header
 
-Implemented schema; posting services are deferred to Phase 2C. Default Django table names; abbreviated fields. All business PKs are bigint. Rack/Shelf/Bin are StorageLocation kinds. See [architecture](database-architecture.md) for constraints.
+Phase 2C adds the operation header and posting services; deployment and full audit closing remain pending. See [Phase 2C engine](phase2c-transaction-engine.md). Default Django table names; abbreviated fields. All business PKs are bigint. Rack/Shelf/Bin are StorageLocation kinds. See [architecture](database-architecture.md) for constraints.
 
 ```mermaid
 erDiagram
@@ -26,6 +26,9 @@ erDiagram
     warehouse_storagelocation o|--o{ transactions_stockmovement : destination
     inventory_stockbalance o|--o{ transactions_stockmovement : debit
     inventory_stockbalance o|--o{ transactions_stockmovement : credit
+    transactions_stockoperation ||--o{ transactions_stockmovement : trigger_enforced_operation_key
+    auth_user ||--o{ transactions_stockoperation : requests
+    auth_user o|--o{ transactions_stockoperation : approves
     transactions_stockmovement o|--o{ transactions_stockmovement : reverses
     auth_user ||--o{ transactions_stockmovement : posts
     inventory_asset ||--o{ transactions_assetassignment : custody
@@ -119,6 +122,17 @@ erDiagram
         bigint parent_id FK
         varchar code
         varchar kind
+    }
+    transactions_stockoperation {
+        uuid operation_key PK
+        jsonb request
+        varchar fingerprint
+        bigint requested_by_id FK
+        timestamptz requested_at
+        bigint approved_by_id FK
+        timestamptz approved_at
+        text approval_reason
+        timestamptz posted_at
     }
     transactions_stockmovement {
         bigint id PK
@@ -231,3 +245,5 @@ XOR rules are additional constraints: movement asset versus bulk product; specif
 Relationship summary: warehouse -> location tree -> assets/bulk buckets; category/manufacturer -> catalog -> individually tracked units or bulk positions; movement ledger -> positions/custody; audit snapshots -> approved corrections; source batch -> staging row -> target and opening movement; immutable change events -> actor and stable entity identity. Recipient may have no login account; assignment destination describes a hostname, department or work order.
 
 Exact fields and indexes: [model reference](phase2b-model-reference.md). Constraint/trigger versus clean()-only boundaries: [architecture](database-architecture.md). The diagram does not imply that ledger posting, audit freeze or cross-row custody coherence is implemented.
+
+Phase 2C movement/header relation is trigger-enforced, not a new physical FK; complete-operation/count/identity guards and immutable header history enforce the relationship. Earlier final Phase 2B enforcement caveats are superseded only where documented in the Phase 2C matrix.

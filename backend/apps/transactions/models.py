@@ -1,4 +1,4 @@
-"""Movement and recipient custody schema. No posting service is implemented."""
+"""Movement ledger, operation identity, approvals and recipient custody."""
 import uuid
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -66,7 +66,7 @@ class StockMovement(models.Model):
             )),
             check("movement_bulk_source", Q(asset__isnull=False) | (Q(source_location__isnull=True, source_balance__isnull=True) | Q(source_location__isnull=False, source_balance__isnull=False))),
             check("movement_bulk_destination", Q(asset__isnull=False) | (Q(destination_location__isnull=True, destination_balance__isnull=True) | Q(destination_location__isnull=False, destination_balance__isnull=False))),
-            check("movement_not_noop_transfer", ~Q(operation_type=MovementType.TRANSFER) | ~Q(source_location=F("destination_location")) | (Q(source_balance__isnull=False, destination_balance__isnull=False) & ~Q(source_balance=F("destination_balance")))),
+            check("movement_not_noop_transfer", ~Q(operation_type=MovementType.TRANSFER) | ~Q(source_location=F("destination_location")) | (Q(source_balance__isnull=False, destination_balance__isnull=False) & ~Q(source_balance=F("destination_balance"))) | (Q(asset__isnull=False) & (~Q(condition_before=F("condition_after")) | ~Q(lifecycle_before=F("lifecycle_after"))))),
             check("movement_not_self_reverse", ~Q(reverses=F("pk"))),
         ]
         indexes = [
@@ -131,3 +131,31 @@ class AssetAssignment(TimestampedModel):
             raise ValidationError({"issue_movement": "Issue actor/time must match assignment."})
         if self.return_movement_id and (self.return_movement.actor_id != self.returned_by_id or self.return_movement.occurred_at != self.returned_at):
             raise ValidationError({"return_movement": "Return actor/time must match assignment."})
+
+
+class StockOperation(models.Model):
+    """Durable complete request; committed operations and approvals are immutable."""
+    operation_key = models.UUIDField(primary_key=True)
+    request = models.JSONField()
+    fingerprint = models.CharField(max_length=64)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="stock_requests")
+    requested_at = models.DateTimeField(default=timezone.now, editable=False)
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="stock_approvals")
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approval_reason = models.TextField(blank=True)
+    posted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            check("operation_fingerprint_valid", Q(fingerprint__regex=r"^[0-9a-f]{64}$")),
+            check("operation_separate_approver", Q(approved_by__isnull=True) | ~Q(approved_by=F("requested_by"))),
+            check("operation_approval_pair", Q(approved_by__isnull=True, approved_at__isnull=True, approval_reason="") | (Q(approved_by__isnull=False, approved_at__isnull=False) & Q(approval_reason__regex=r"\S"))),
+            check("operation_approval_order", Q(approved_at__isnull=True) | Q(approved_at__gte=F("requested_at"))),
+            check("operation_post_order", Q(posted_at__isnull=True) | Q(posted_at__gte=F("requested_at"))),
+        ]
+        permissions = [
+            ("receive_stock", "Can receive stock"), ("issue_stock", "Can issue stock"),
+            ("transfer_stock", "Can transfer or reclassify stock"), ("return_stock", "Can return stock"),
+            ("request_adjustment", "Can request stock adjustments"), ("request_disposal", "Can request disposal"),
+            ("review_audit_adjustment", "Can review audit adjustments"),
+        ]

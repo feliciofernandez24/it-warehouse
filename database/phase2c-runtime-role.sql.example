@@ -1,0 +1,19 @@
+-- REVIEW TEMPLATE: run as a deployment owner, never as an application startup step.
+-- No existing login, password, membership or owner privilege is modified here.
+-- Choose/inspect the role name first: CREATE ROLE intentionally fails if it already exists.
+BEGIN;
+CREATE ROLE itw_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+GRANT USAGE ON SCHEMA public TO itw_runtime;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO itw_runtime;
+GRANT INSERT, UPDATE, DELETE ON inventory_asset, inventory_stockbalance,
+    transactions_stockoperation, transactions_stockmovement, transactions_assetassignment,
+    audits_physicalinventoryaudit, audits_auditline, audits_assetchangelog,
+    django_session TO itw_runtime;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO itw_runtime;
+-- Invoker functions need EXECUTE and the above underlying table rights.
+-- Existing PostgreSQL default PUBLIC EXECUTE applies; inspect pg_proc ACLs at deployment.
+-- Do not grant schema CREATE, TRUNCATE, table ownership or role administration.
+-- Provision a separate LOGIN and securely managed password/membership after explicit review.
+-- Migrations and group/user provisioning run through a separate owner/admin connection.
+-- Re-run grants for reviewed future tables/functions; no broad default privileges are set.
+COMMIT;
