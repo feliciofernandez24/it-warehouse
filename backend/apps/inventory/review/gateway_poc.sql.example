@@ -1,0 +1,47 @@
+-- ISOLATED TEST ONLY. Never a production migration or startup script.
+DO $$ BEGIN
+ IF current_database() <> 'test_phase3b2b1_test' THEN
+   RAISE EXCEPTION 'ISOLATED_DATABASE_REQUIRED';
+ END IF;
+END $$;
+CREATE ROLE itw_review_poc_owner NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+CREATE ROLE itw_review_poc_runtime LOGIN PASSWORD 'isolated-poc-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+CREATE SCHEMA itw_review_gateway_poc;
+REVOKE ALL ON SCHEMA itw_review_gateway_poc FROM PUBLIC;
+GRANT USAGE, CREATE ON SCHEMA itw_review_gateway_poc TO itw_review_poc_owner;
+GRANT USAGE ON SCHEMA public TO itw_review_poc_owner;
+GRANT SELECT (id,is_active) ON public.auth_user TO itw_review_poc_owner;
+GRANT SELECT (id,content_type_id,codename) ON public.auth_permission TO itw_review_poc_owner;
+GRANT SELECT (id,app_label,model) ON public.django_content_type TO itw_review_poc_owner;
+GRANT SELECT (user_id,permission_id) ON public.auth_user_user_permissions TO itw_review_poc_owner;
+GRANT SELECT (user_id,group_id) ON public.auth_user_groups TO itw_review_poc_owner;
+GRANT SELECT (group_id,permission_id) ON public.auth_group_permissions TO itw_review_poc_owner;
+CREATE FUNCTION itw_review_gateway_poc.authorize(actor_id bigint, capability text)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,pg_temp AS $$
+BEGIN
+ PERFORM pg_catalog.pg_advisory_xact_lock(73921,2);
+ IF capability IS NULL OR capability NOT IN (
+   'inventory.capture_import','inventory.prepare_import','inventory.review_import',
+   'inventory.approve_import','inventory.revoke_import','inventory.view_import_evidence')
+ THEN RETURN 'UNKNOWN_CAPABILITY'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.auth_user WHERE id=actor_id AND is_active)
+ THEN RETURN 'ACTOR_UNAVAILABLE_OR_INACTIVE'; END IF;
+ IF EXISTS(
+   SELECT 1 FROM public.auth_permission p
+   JOIN public.django_content_type c ON c.id=p.content_type_id
+   WHERE c.app_label='inventory' AND c.model='importbatch'
+   AND 'inventory.' || p.codename=capability AND (
+      EXISTS(SELECT 1 FROM public.auth_user_user_permissions d
+             WHERE d.user_id=actor_id AND d.permission_id=p.id)
+      OR EXISTS(SELECT 1 FROM public.auth_user_groups g
+                JOIN public.auth_group_permissions gp ON gp.group_id=g.group_id
+                WHERE g.user_id=actor_id AND gp.permission_id=p.id)))
+ THEN RETURN 'OK'; END IF;
+ RETURN 'PERMISSION_DENIED';
+END $$;
+REVOKE ALL ON FUNCTION itw_review_gateway_poc.authorize(bigint,text) FROM PUBLIC;
+ALTER FUNCTION itw_review_gateway_poc.authorize(bigint,text) OWNER TO itw_review_poc_owner;
+REVOKE CREATE ON SCHEMA itw_review_gateway_poc FROM itw_review_poc_owner;
+GRANT USAGE ON SCHEMA itw_review_gateway_poc TO itw_review_poc_runtime;
+GRANT EXECUTE ON FUNCTION itw_review_gateway_poc.authorize(bigint,text) TO itw_review_poc_runtime;
