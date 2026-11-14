@@ -1,0 +1,51 @@
+# Phase 3B.2B.2 capture architecture
+
+Status: proposed design only, 2026-11-14. Inspected develop at c834bc3 with a clean worktree. No database connection, source workbook access, credential provisioning, migration or operational write is part of this stage. Companion designs: [gateway](phase3b2b2-write-gateway-design.md), [transaction](phase3b2b2-registration-transaction.md), [tests](phase3b2b2-security-test-plan.md).
+
+## Existing behavior and evidence
+
+The offline modules in backend/apps/inventory/staging are the source of parsing and canonicalization rules. reader.read_workbook reads bounded bytes once, checks the pinned workbook SHA-256, validates OOXML relationships, sheet order, sections, counts and the 1900 date system, and preserves raw cells and layout evidence. It does not evaluate formulas. Limits currently include 16 MiB compressed, 64 MiB expanded, 256 members, 250,000 cells and 32,767 characters per string. Production CLI profile injection is disabled; synthetic tests can inject profiles.
+
+common.canonical uses UTF-8 JSON, sorted keys, compact separators, ensure_ascii=False and no floats; it preserves Unicode strings without normalization. normalization.preview is a proposal artifact (itw.preparation-preview.v1), not a business-verified review snapshot. Its rules, dictionary digest, fixed reference date and runtime metadata matter for reproducibility. Never silently substitute it for itw.import-preview.v1.
+
+storage.capture publishes a content-addressed preview JSON outside the repository using a 0700 POSIX root, 0400 regular files, no-follow opens, fsync and atomic no-replace publication. It does not retain the original workbook. Its same-owner mutation limitation is explicit.
+
+ImportBatch and ImportStagingRecord hold source provenance; 0002 introduces the review models and permissions, and 0003 adds owner-only guards, frozen source bindings, profile/count reconciliation, immutable participants/events/snapshots and deferred completeness checks. ImportSourceProfile verification attests a definition, not authenticated upload provenance. ImportPreviewSnapshot remains absent at capture. The B.1 service register_verified_capture currently ends with GATEWAY_UNAVAILABLE, while its preflight is read-only. The restricted SQL proof authenticates no human and must remain isolated.
+
+base.py uses environment PostgreSQL settings and SessionAuthentication/IsAuthenticated with CSRF middleware. development.py does not establish a restricted runtime identity. Settings inspection did not read .env or resolve/connect to its database. Phase 2C and review writers share advisory lock (73921,2).
+
+## Proposed trust boundary
+
+Choose independent authentication and capture-verifier attestations, rather than trusting a caller-supplied actor ID or a bare application assertion. The web process has only the capture runtime database credential. A separate identity broker validates the authenticated session and issues a short-lived, action-specific assertion; its signing key is unavailable to that web process. A separate verifier/storage service parses the privately staged workbook with the approved reader and profile, publishes durable artifacts, and signs the exact capture envelope. It must derive results itself, never sign caller-provided manifests.
+
+The database verifies both signatures and recomputes all provided-byte digests before any write. Trust includes the identity broker, verifier, storage operator, reviewed function code and database administrators. This reduces abuse of a stolen runtime credential; it does not protect against compromise of the broker, verifier, database owner or a victim's authenticated session. No claim of protection from those principals is made.
+
+Future session endpoints require authenticated request.user, CSRF, TLS, secure cookies, bounded streaming uploads, server-selected database alias, rate/size limits and sanitized failures. Neither staff nor superuser implies capture authority. Current active status and explicit direct/group inventory.capture_import on inventory/importbatch are checked inside the registration transaction. Capture authority does not confer evidence download authority; downloads require inventory.view_import_evidence separately. No upload endpoint is implemented here.
+
+## Verified capture envelope v1
+
+The canonical envelope has an exact allowlisted schema with domain itw.verified-capture.v1. Reject unknown fields, duplicate JSON keys, floats, invalid UTF-8, excessive nesting, overlong fields, nulls in required positions and values exceeding database column bounds. Validate canonical bytes by parse/re-encode equality; never hash a JSONB rendering as staging canonical JSON.
+
+Bind: profile UUID/code/version/digest and verification-evidence digest; workbook SHA-256 and byte length; layout digest; manifest digest/length; capture-artifact digest/length; opaque workbook and capture storage keys with immutable object version IDs; parser build digest and layout version; normalization version/dictionary digest/reference date/runtime; source timezone/date system; exact five counts; ordered source-row-set digest; storage receipt ID and retention policy version. The envelope excludes secrets, user filenames, URLs and arbitrary filesystem paths. Request/actor identity is bound by the request fingerprint and attestations, outside the reusable artifact envelope.
+
+The capture artifact is exactly canonical(preview) from the approved offline normalizer, including its nested manifest. SHA256 of those complete bytes is capture_artifact_digest and the existing storage key stem. The internal preview_digest instead hashes the preview before adding preview_digest: these are different digests. manifest_digest is digest(manifest); layout_digest is digest(manifest.layout); workbook digest hashes original binary bytes. Retain both original workbook and capture artifact; derive the manifest from the latter without storing an inconsistent second copy.
+
+Use the existing source-row identity unchanged: digest of the object containing domain itw.source-row.v1, workbook_sha256, exact worksheet_name, integer excel_row_number, section_header and ordered raw_cells. Classification is NOT in that digest and therefore must additionally be covered by the manifest and verified row set. Raw cell fields include coordinates, XML type/style, lexical value, decoded value, formula and cache metadata, including explicit nulls. No trimming, case folding, Unicode normalization or serial-number identity is permitted. Sort the row-set representation by manifest sheet ordinal then numeric row number and include each full row and classification; hash canonical({domain: "itw.capture-row-set.v1", rows: [...] }). UUIDs/SQL row IDs are references, not source identities.
+
+## Immutable profile binding
+
+Only select an existing definition_verified profile whose evidence digest is present. Compare workbook hash, layout digest and every expected count, then compare the approved verifier configuration to the immutable profile digest. Current profile canonical bytes contain only domain/code/version/workbook/layout/counts; they do not encode headers, sequence coordinates or parser policy. An additional immutable policy binding in the proposed migration must bind profile ID/digest to approved parser build, headers/sequence configuration digest, normalization policy and verification evidence. Do not pretend existing profile verification covers these.
+
+Profile bootstrap remains a separately reviewed owner operation, never available to capture runtime or verifier. A changed workbook requires a newly verified profile/version and policy binding; it cannot be admitted by overriding expected_sha256 or synthetic-test parameters. Existing batches are never silently adopted.
+
+## Retention, confidentiality and recovery
+
+Publish and verify artifacts before opening the database transaction. Storage receipts attest exact digests, immutable versions, durable replication and a retention lease. Storage keys are server-generated opaque identifiers; never accept local paths or fetch arbitrary URLs. Encrypt storage and backups with managed separate keys, authenticated transport, least-privilege upload/read/retention roles and audited evidence downloads. Disable public links and raw-body logging; artifact digests and metadata are also confidential.
+
+Proposed default: retain committed source, capture, attestations, profiles and replay receipts indefinitely until an approved retention/legal-hold policy authorizes a reviewed purge. No automatic purge is introduced. Unreferenced uploads may be collected only after a proposed seven-day grace period, expired attestations and a reference recheck under (73921,2). A live registration reservation/lease protects in-flight artifacts; the collector and registration must use the same coordination protocol. These durations need operational approval before deployment.
+
+Filesystem and PostgreSQL are not one atomic resource. A storage success followed by SQL rollback leaves an orphan, never a partially registered batch. A lost SQL response requires same-request replay, not deletion. A committed missing/corrupt artifact blocks evidence use and all future advancement, raises a sanitized integrity incident and restores the exact verified object version from backup; never rewrite database digests or manufacture replacement evidence. Storage lease expiry cannot permit deleting a committed object. Database reconciliation pins committed references durably before any lease-based collection.
+
+## Readiness
+
+Secure capture implementation is NOT ready to proceed as an operational feature. Prerequisites are the reviewed forward migration/ownership plan, broker and verifier protocol/SQL signature verifier selection, canonical parser proof, race-safe authorization coordination, durable storage/retention protocol and passing disposable-database adversarial tests. The companion documents define the proposed implementation contract; none of those prerequisites is implemented or security-certified here.

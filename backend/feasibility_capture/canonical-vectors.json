@@ -1,0 +1,138 @@
+[
+    {
+        "name":  "unicode",
+        "value":  {
+                      "composed":  "é",
+                      "decomposed":  "é",
+                      "astral":  "🧪",
+                      "japanese":  "日本",
+                      "control":  "\n\t\"\\",
+                      "nil":  null
+                  },
+        "canonical_json":  "{\"astral\":\"🧪\",\"composed\":\"é\",\"control\":\"\\n\\t\\\"\\\\\",\"decomposed\":\"é\",\"japanese\":\"日本\",\"nil\":null}",
+        "canonical_utf8_hex":  "7b2261737472616c223a22f09fa7aa222c22636f6d706f736564223a22c3a9222c22636f6e74726f6c223a225c6e5c745c225c5c222c226465636f6d706f736564223a2265cc81222c226a6170616e657365223a22e697a5e69cac222c226e696c223a6e756c6c7d",
+        "sha256":  "f96a542d914750cea1e5a8e669aeb6059e8bda6710d69671fe8e626009f8f32e"
+    },
+    {
+        "name":  "source-row",
+        "value":  {
+                      "domain":  "itw.source-row.v1",
+                      "workbook_sha256":  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                      "worksheet_name":  "Syntḧétique 日本",
+                      "excel_row_number":  2,
+                      "section_header":  {
+                                             "excel_row_number":  1,
+                                             "headers":  {
+                                                             "A":  "Device Name"
+                                                         }
+                                         },
+                      "raw_cells":  [
+                                        {
+                                            "coordinate":  "A2",
+                                            "header":  "Device Name",
+                                            "xml_type":  "str",
+                                            "style":  null,
+                                            "raw_lexical":  "cached",
+                                            "value":  "cached",
+                                            "formula":  "\"cached\"",
+                                            "cached_value":  "cached",
+                                            "cached_type":  "str"
+                                        }
+                                    ]
+                  },
+        "canonical_json":  "{\"domain\":\"itw.source-row.v1\",\"excel_row_number\":2,\"raw_cells\":[{\"cached_type\":\"str\",\"cached_value\":\"cached\",\"coordinate\":\"A2\",\"formula\":\"\\\"cached\\\"\",\"header\":\"Device Name\",\"raw_lexical\":\"cached\",\"style\":null,\"value\":\"cached\",\"xml_type\":\"str\"}],\"section_header\":{\"excel_row_number\":1,\"headers\":{\"A\":\"Device Name\"}},\"workbook_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"worksheet_name\":\"Syntḧétique 日本\"}",
+        "canonical_utf8_hex":  "7b22646f6d61696e223a226974772e736f757263652d726f772e7631222c22657863656c5f726f775f6e756d626572223a322c227261775f63656c6c73223a5b7b226361636865645f74797065223a22737472222c226361636865645f76616c7565223a22636163686564222c22636f6f7264696e617465223a224132222c22666f726d756c61223a225c226361636865645c22222c22686561646572223a22446576696365204e616d65222c227261775f6c65786963616c223a22636163686564222c227374796c65223a6e756c6c2c2276616c7565223a22636163686564222c22786d6c5f74797065223a22737472227d5d2c2273656374696f6e5f686561646572223a7b22657863656c5f726f775f6e756d626572223a312c2268656164657273223a7b2241223a22446576696365204e616d65227d7d2c22776f726b626f6f6b5f736861323536223a2261616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161222c22776f726b73686565745f6e616d65223a2253796e74e1b8a7c3a9746971756520e697a5e69cac227d",
+        "sha256":  "27b32ffc96435274a17812415001045cb39d7063b80d94e2b7b656a42ac81d02"
+    },
+    {
+        "name":  "array-order",
+        "value":  {
+                      "rows":  [
+                                   2,
+                                   1
+                               ],
+                      "integer":  9007199254740991,
+                      "nil":  null
+                  },
+        "canonical_json":  "{\"integer\":9007199254740991,\"nil\":null,\"rows\":[2,1]}",
+        "canonical_utf8_hex":  "7b22696e7465676572223a393030373139393235343734303939312c226e696c223a6e756c6c2c22726f7773223a5b322c315d7d",
+        "sha256":  "44df7a097de455ca53eb4c53ca4b72bdf8dd75a45595659a318ed648483e2121"
+    },
+    {
+        "name":  "verified-capture",
+        "value":  {
+                      "domain":  "itw.verified-capture.v1",
+                      "profile":  {
+                                      "id":  "00000000-0000-4000-8000-000000000001",
+                                      "code":  "SYNTHETIC",
+                                      "version":  1,
+                                      "digest":  "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                                      "verification_evidence_digest":  "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+                                  },
+                      "workbook":  {
+                                       "sha256":  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                                       "byte_length":  123,
+                                       "storage_key":  "synthetic-workbook",
+                                       "version_id":  "synthetic-v1"
+                                   },
+                      "layout_digest":  "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                      "manifest":  {
+                                       "digest":  "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+                                       "byte_length":  456
+                                   },
+                      "capture":  {
+                                      "digest":  "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                                      "byte_length":  789,
+                                      "storage_key":  "synthetic-preview",
+                                      "version_id":  "synthetic-v1"
+                                  },
+                      "parser":  {
+                                     "build_digest":  "1111111111111111111111111111111111111111111111111111111111111111",
+                                     "configuration_digest":  "2222222222222222222222222222222222222222222222222222222222222222",
+                                     "layout_version":  "synthetic-layout-v1"
+                                 },
+                      "normalization":  {
+                                            "version":  "synthetic-v1",
+                                            "dictionary_digest":  "3333333333333333333333333333333333333333333333333333333333333333",
+                                            "reference_date":  "2026-11-13",
+                                            "runtime":  {
+                                                            "python":  [
+                                                                           3,
+                                                                           13
+                                                                       ],
+                                                            "unicode":  "15.1.0"
+                                                        }
+                                        },
+                      "source_timezone":  "Asia/Tokyo",
+                      "date_system":  "1900",
+                      "counts":  {
+                                     "worksheets":  1,
+                                     "populated":  1,
+                                     "CANDIDATE":  1,
+                                     "HEADER":  0,
+                                     "SEQUENCE_ONLY":  0
+                                 },
+                      "source_row_set_digest":  "4444444444444444444444444444444444444444444444444444444444444444",
+                      "storage_receipt_id":  "00000000-0000-4000-8000-000000000002",
+                      "retention_policy_version":  "synthetic-retain-v1"
+                  },
+        "canonical_json":  "{\"capture\":{\"byte_length\":789,\"digest\":\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"storage_key\":\"synthetic-preview\",\"version_id\":\"synthetic-v1\"},\"counts\":{\"CANDIDATE\":1,\"HEADER\":0,\"SEQUENCE_ONLY\":0,\"populated\":1,\"worksheets\":1},\"date_system\":\"1900\",\"domain\":\"itw.verified-capture.v1\",\"layout_digest\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"manifest\":{\"byte_length\":456,\"digest\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"normalization\":{\"dictionary_digest\":\"3333333333333333333333333333333333333333333333333333333333333333\",\"reference_date\":\"2026-11-13\",\"runtime\":{\"python\":[3,13],\"unicode\":\"15.1.0\"},\"version\":\"synthetic-v1\"},\"parser\":{\"build_digest\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"configuration_digest\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"layout_version\":\"synthetic-layout-v1\"},\"profile\":{\"code\":\"SYNTHETIC\",\"digest\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"id\":\"00000000-0000-4000-8000-000000000001\",\"verification_evidence_digest\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"version\":1},\"retention_policy_version\":\"synthetic-retain-v1\",\"source_row_set_digest\":\"4444444444444444444444444444444444444444444444444444444444444444\",\"source_timezone\":\"Asia/Tokyo\",\"storage_receipt_id\":\"00000000-0000-4000-8000-000000000002\",\"workbook\":{\"byte_length\":123,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"storage_key\":\"synthetic-workbook\",\"version_id\":\"synthetic-v1\"}}",
+        "canonical_utf8_hex":  "7b2263617074757265223a7b22627974655f6c656e677468223a3738392c22646967657374223a2266666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666222c2273746f726167655f6b6579223a2273796e7468657469632d70726576696577222c2276657273696f6e5f6964223a2273796e7468657469632d7631227d2c22636f756e7473223a7b2243414e444944415445223a312c22484541444552223a302c2253455155454e43455f4f4e4c59223a302c22706f70756c61746564223a312c22776f726b736865657473223a317d2c22646174655f73797374656d223a2231393030222c22646f6d61696e223a226974772e76657269666965642d636170747572652e7631222c226c61796f75745f646967657374223a2264646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464222c226d616e6966657374223a7b22627974655f6c656e677468223a3435362c22646967657374223a2265656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565227d2c226e6f726d616c697a6174696f6e223a7b2264696374696f6e6172795f646967657374223a2233333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333222c227265666572656e63655f64617465223a22323032362d31312d3133222c2272756e74696d65223a7b22707974686f6e223a5b332c31335d2c22756e69636f6465223a2231352e312e30227d2c2276657273696f6e223a2273796e7468657469632d7631227d2c22706172736572223a7b226275696c645f646967657374223a2231313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131222c22636f6e66696775726174696f6e5f646967657374223a2232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232222c226c61796f75745f76657273696f6e223a2273796e7468657469632d6c61796f75742d7631227d2c2270726f66696c65223a7b22636f6465223a2253594e544845544943222c22646967657374223a2262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262222c226964223a2230303030303030302d303030302d343030302d383030302d303030303030303030303031222c22766572696669636174696f6e5f65766964656e63655f646967657374223a2263636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363222c2276657273696f6e223a317d2c22726574656e74696f6e5f706f6c6963795f76657273696f6e223a2273796e7468657469632d72657461696e2d7631222c22736f757263655f726f775f7365745f646967657374223a2234343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434222c22736f757263655f74696d657a6f6e65223a22417369612f546f6b796f222c2273746f726167655f726563656970745f6964223a2230303030303030302d303030302d343030302d383030302d303030303030303030303032222c22776f726b626f6f6b223a7b22627974655f6c656e677468223a3132332c22736861323536223a2261616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161222c2273746f726167655f6b6579223a2273796e7468657469632d776f726b626f6f6b222c2276657273696f6e5f6964223a2273796e7468657469632d7631227d7d",
+        "sha256":  "ac4bb8578c8b2ba74b661eb3b79443a46a51d36423210f492fe014143e0730d0"
+    },
+    {
+        "name":  "capture-request",
+        "value":  {
+                      "domain":  "itw.capture-request.v1",
+                      "actor_id":  101,
+                      "action":  "register_verified_capture",
+                      "request_id":  "00000000-0000-4000-8000-000000000003",
+                      "revision_id":  null,
+                      "expected_version":  null,
+                      "envelope_digest":  "ac4bb8578c8b2ba74b661eb3b79443a46a51d36423210f492fe014143e0730d0"
+                  },
+        "canonical_json":  "{\"action\":\"register_verified_capture\",\"actor_id\":101,\"domain\":\"itw.capture-request.v1\",\"envelope_digest\":\"ac4bb8578c8b2ba74b661eb3b79443a46a51d36423210f492fe014143e0730d0\",\"expected_version\":null,\"request_id\":\"00000000-0000-4000-8000-000000000003\",\"revision_id\":null}",
+        "canonical_utf8_hex":  "7b22616374696f6e223a2272656769737465725f76657269666965645f63617074757265222c226163746f725f6964223a3130312c22646f6d61696e223a226974772e636170747572652d726571756573742e7631222c22656e76656c6f70655f646967657374223a2261633462623835373863386232626137346236363165623362373934343361343661353164333634323332313066343932666530313431343365303733306430222c2265787065637465645f76657273696f6e223a6e756c6c2c22726571756573745f6964223a2230303030303030302d303030302d343030302d383030302d303030303030303030303033222c227265766973696f6e5f6964223a6e756c6c7d",
+        "sha256":  "f7b4156cd36d13333fc0b74107ed10eae5c4acdcd1da751ee5802c3e612414c5"
+    }
+]
