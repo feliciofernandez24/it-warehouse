@@ -1,0 +1,134 @@
+{
+  "tests": {
+    "ran": 16,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "shared_runtime_identity": [
+    "itw_django_rehearsal",
+    "itw_django_rehearsal"
+  ],
+  "shared_runtime_denial": {
+    "code": "IDENTITY_VERIFICATION_UNAVAILABLE",
+    "retryable": false
+  },
+  "runtime_grants": {
+    "select": [
+      "auth_user",
+      "auth_group",
+      "auth_permission",
+      "auth_user_groups",
+      "auth_user_user_permissions",
+      "auth_group_permissions",
+      "django_content_type",
+      "django_admin_log",
+      "django_session",
+      "accounts_assetrecipient",
+      "warehouse_warehouse",
+      "warehouse_storagelocation",
+      "inventory_productmodel",
+      "inventory_asset",
+      "inventory_stockbalance",
+      "transactions_stockoperation",
+      "transactions_stockmovement",
+      "transactions_assetassignment",
+      "audits_physicalinventoryaudit",
+      "audits_auditline"
+    ],
+    "insert": [
+      "django_session",
+      "inventory_asset",
+      "inventory_stockbalance",
+      "transactions_stockoperation",
+      "transactions_stockmovement",
+      "transactions_assetassignment",
+      "audits_physicalinventoryaudit",
+      "audits_auditline"
+    ],
+    "update": {
+      "auth_user": [
+        "last_login",
+        "password"
+      ],
+      "django_session": [
+        "session_data",
+        "expire_date"
+      ],
+      "inventory_productmodel": [
+        "version"
+      ],
+      "transactions_stockmovement": [
+        "id"
+      ],
+      "inventory_asset": [
+        "condition",
+        "lifecycle_status",
+        "current_location_id",
+        "version",
+        "updated_at"
+      ],
+      "inventory_stockbalance": [
+        "quantity",
+        "version",
+        "updated_at"
+      ],
+      "transactions_stockoperation": [
+        "approved_by_id",
+        "approved_at",
+        "approval_reason",
+        "posted_at"
+      ],
+      "transactions_assetassignment": [
+        "returned_at",
+        "returned_by_id",
+        "return_movement_id",
+        "updated_at"
+      ],
+      "audits_physicalinventoryaudit": [
+        "status",
+        "started_at",
+        "updated_at"
+      ],
+      "audits_auditline": null
+    },
+    "delete": [
+      "django_session"
+    ],
+    "sequence_usage": [
+      "inventory_asset_id_seq",
+      "inventory_stockbalance_id_seq",
+      "transactions_stockmovement_id_seq",
+      "transactions_assetassignment_id_seq",
+      "audits_physicalinventoryaudit_id_seq",
+      "audits_auditline_id_seq"
+    ],
+    "callable_helpers": [
+      "itw_can(bigint,text)",
+      "itw_scope(bigint,boolean)",
+      "itw_frozen(bigint)"
+    ],
+    "stock_functions_public_execute_revoked": [
+      "itw_asset_identity_guard()",
+      "itw_assignment_identity_guard()",
+      "itw_audit_line_guard()",
+      "itw_audit_scope_guard()",
+      "itw_balance_conservation()",
+      "itw_bucket_identity_guard()",
+      "itw_can(bigint,text)",
+      "itw_custody_guard()",
+      "itw_engine_lock()",
+      "itw_final_state_guard()",
+      "itw_freeze_guard()",
+      "itw_frozen(bigint)",
+      "itw_hierarchy_guard()",
+      "itw_movement_guard()",
+      "itw_operation_guard()",
+      "itw_product_mode_guard()",
+      "itw_reject_history_change()",
+      "itw_scope(bigint,boolean)",
+      "itw_tracking_guard()"
+    ]
+  },
+  "restore_used": false
+}
