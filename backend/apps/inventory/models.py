@@ -239,7 +239,15 @@ class ImportBatch(TimestampedModel):
             check("batch_review_date_order", Q(reviewed_at__isnull=True) | Q(reviewed_at__gte=F("uploaded_at"))),
             check("batch_approval_evidence", ~Q(status__in=[BatchStatus.APPROVED, BatchStatus.PROMOTED]) | (Q(reviewed_by__isnull=False, reviewed_at__isnull=False) & ~Q(approved_preview_digest=""))),
         ]
-        permissions = [("review_import", "Can review import previews"), ("promote_import", "Can promote approved imports")]
+        permissions = [
+            ("review_import", "Can review import previews"),
+            ("promote_import", "Can promote approved imports"),
+            ("capture_import", "Can register inventory source evidence"),
+            ("prepare_import", "Can prepare inventory review revisions"),
+            ("approve_import", "Can approve inventory review snapshots"),
+            ("revoke_import", "Can revoke inventory review approval"),
+            ("view_import_evidence", "Can inspect confidential import evidence"),
+        ]
 
 
 class ImportStagingRecord(TimestampedModel):
@@ -269,3 +277,9 @@ class ImportStagingRecord(TimestampedModel):
             )),
         ]
         indexes = [models.Index(fields=["batch", "status"], name="staging_batch_status")]
+
+
+# Sensitive schema is separate from catalog and stock models.
+from .review_models import (  # noqa: E402,F401
+    ImportSourceProfile, ImportPreparationRevision, ImportRevisionParticipant, ImportPreviewSnapshot, ImportReviewEvent,
+)
