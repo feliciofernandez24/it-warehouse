@@ -1,0 +1,13 @@
+{
+  "mode": "development",
+  "head": "ddea0f839bd49fdd5da94b39cbbb09caddcb2f71",
+  "db_container": "it-warehouse-db-1",
+  "container_id": "06a763552cf644ecb68efa4873bb00b978c7a4970acc7586a8eacf3cec035c11",
+  "database": "it_warehouse",
+  "apps": [
+    "it-warehouse-backend-1",
+    "it-warehouse-frontend-1"
+  ],
+  "postgres_image": "sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0ef0302ac",
+  "backend_image": "sha256:35edbfd842667a865b801832e4ba66760a54f5b13c1c6ad5ca53fc88c71f3f65"
+}
