@@ -89,3 +89,6 @@ CACHES = {
         "LOCATION": os.environ.get("LOGIN_CACHE_LOCATION", "itw-login"),
     },
 }
+
+# Manual posting requires an explicit reviewed deployment opt-in.
+MANUAL_INVENTORY_ENABLED = os.environ.get("ITW_MANUAL_INVENTORY_ENABLED", "0") == "1"

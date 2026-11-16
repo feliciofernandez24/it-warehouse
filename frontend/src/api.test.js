@@ -66,3 +66,23 @@ test("external URLs are never used with session credentials", async () => {
   );
   expect(fetch).not.toHaveBeenCalled();
 });
+
+test("management save bootstraps CSRF and preserves validation details", async () => {
+  fetch
+    .mockResolvedValueOnce(response({ csrfToken: "master-token" }))
+    .mockResolvedValueOnce(response({ code: ["Duplicate code."] }, 400));
+  let error;
+  try {
+    await api.save("/api/management/categories/", "POST", { code: "DUP" });
+  } catch (e) {
+    error = e;
+  }
+  expect(fetch.mock.calls[1][1].headers["X-CSRFToken"]).toBe("master-token");
+  expect(error.details.code).toEqual(["Duplicate code."]);
+});
+test("management client rejects unsupported mutation methods", async () => {
+  await expect(
+    api.save("/api/management/categories/", "DELETE", {}),
+  ).rejects.toThrow("Unsupported change method");
+  expect(fetch).not.toHaveBeenCalled();
+});

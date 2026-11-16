@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { api, request } from "./api";
+import { MasterEditor, canManage, management } from "./MasterData";
+import { InventoryOperations } from "./InventoryOperations";
 const pages = {
+  operations: { title: "Inventory Operations", subtitle: "Register, receive, transfer, issue and return equipment", icon: "+" },
   dashboard: {
     title: "Overview",
     subtitle: "A clear view of your warehouse",
@@ -308,7 +311,7 @@ function Dashboard() {
     </State>
   );
 }
-function Catalog({ page, config, initialWarehouse }) {
+function Catalog({ page, config, initialWarehouse, user }) {
   const [search, setSearch] = useState(""),
     [query, setQuery] = useState(""),
     [filter, setFilter] = useState(""),
@@ -318,7 +321,9 @@ function Catalog({ page, config, initialWarehouse }) {
     [data, setData] = useState(null),
     [error, setError] = useState(""),
     [retry, setRetry] = useState(0),
-    [detail, setDetail] = useState(null);
+    [detail, setDetail] = useState(null),
+    [editing, setEditing] = useState(null),
+    [notice, setNotice] = useState("");
   useEffect(() => {
     const t = setTimeout(() => {
       setQuery(search);
@@ -339,7 +344,11 @@ function Catalog({ page, config, initialWarehouse }) {
       params = new URLSearchParams({ page: index, search: query });
     if (filter)
       params.set(
-        page === "assets" ? "lifecycle_status" : "tracking_mode",
+        page === "assets"
+          ? "lifecycle_status"
+          : page === "products"
+            ? "tracking_mode"
+            : "is_active",
         filter,
       );
     if (warehouse) params.set("warehouse", warehouse);
@@ -354,13 +363,44 @@ function Catalog({ page, config, initialWarehouse }) {
   }, [page, config.path, index, query, filter, warehouse, retry]);
   async function open(id) {
     try {
-      setDetail(await request("/api/inventory/assets/" + id + "/"));
+      setDetail(await request("/api/" + config.path + "/" + id + "/"));
     } catch (e) {
       setError(e.message);
     }
   }
   return (
     <>
+      {editing && (
+        <MasterEditor
+          page={page}
+          id={editing.id}
+          user={user}
+          onClose={() => setEditing(null)}
+          onSaved={(message) => {
+            setEditing(null);
+            setNotice(message);
+            setRetry((x) => x + 1);
+          }}
+        />
+      )}
+      <div className="management-bar">
+        {canManage(user, page, "add") && (
+          <button
+            className="primary"
+            onClick={() => {
+              setNotice("");
+              setEditing({ id: null });
+            }}
+          >
+            Register {management[page].singular}
+          </button>
+        )}
+        {notice && (
+          <p className="success-notice" role="status">
+            {notice}
+          </p>
+        )}
+      </div>
       <section className="panel">
         <div className="toolbar">
           <label className="search-field">
@@ -392,6 +432,22 @@ function Catalog({ page, config, initialWarehouse }) {
               ))}
             </select>
           )}
+          {["categories", "manufacturers", "warehouses", "locations"].includes(
+            page,
+          ) && (
+            <select
+              aria-label="Record status"
+              value={filter}
+              onChange={(e) => {
+                setFilter(e.target.value);
+                setIndex(1);
+              }}
+            >
+              <option value="">All records</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          )}
           {page === "locations" && (
             <select
               aria-label="Warehouse"
@@ -409,7 +465,11 @@ function Catalog({ page, config, initialWarehouse }) {
               ))}
             </select>
           )}
-          <span className="pill">Read only</span>
+          <span className="pill">
+            {canManage(user, page, "add") || canManage(user, page, "change")
+              ? "Master data"
+              : "Read only"}
+          </span>
         </div>
         <State
           error={error}
@@ -429,6 +489,7 @@ function Catalog({ page, config, initialWarehouse }) {
                         {["assets", "warehouses"].includes(page) && (
                           <th>Details</th>
                         )}
+                        {canManage(user, page, "change") && <th>Manage</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -460,9 +521,29 @@ function Catalog({ page, config, initialWarehouse }) {
                           )}
                           {page === "warehouses" && (
                             <td>
+                              <button
+                                className="text-button"
+                                onClick={() => open(row.id)}
+                              >
+                                View warehouse
+                              </button>
+                              {" / "}
                               <a href={"#/locations?warehouse=" + row.id}>
                                 Browse locations →
                               </a>
+                            </td>
+                          )}
+                          {canManage(user, page, "change") && (
+                            <td>
+                              <button
+                                className="text-button"
+                                onClick={() => {
+                                  setNotice("");
+                                  setEditing({ id: row.id });
+                                }}
+                              >
+                                Edit {management[page].singular}
+                              </button>
                             </td>
                           )}
                         </tr>
@@ -505,9 +586,12 @@ function Catalog({ page, config, initialWarehouse }) {
         </State>
       </section>
       {detail && (
-        <section className="panel detail" aria-label="Asset detail">
+        <section
+          className="panel detail"
+          aria-label={page === "assets" ? "Asset detail" : "Warehouse detail"}
+        >
           <div className="panel-heading">
-            <h2>{detail.asset_tag}</h2>
+            <h2>{detail.asset_tag || detail.name}</h2>
             <button onClick={() => setDetail(null)}>Close</button>
           </div>
           <dl>
@@ -603,8 +687,8 @@ export default function App() {
         <nav aria-label="Main navigation">
           {Object.entries(pages)
             .filter(
-              ([, p]) =>
-                !p.permission || user.permissions.includes(p.permission),
+              ([name, p]) =>
+                (name !== "operations" || user.manual_inventory_enabled === true) && (!p.permission || user.permissions.includes(p.permission)),
             )
             .map(([name, p]) => (
               <a
@@ -621,7 +705,7 @@ export default function App() {
         <div className="sidebar-bottom">
           <span className="status-dot" /> Inventory visibility
           <span className="sidebar-version">
-            Phase 4A · Read-only workspace
+            Phase 4B · Master data workspace
           </span>
         </div>
       </aside>
@@ -667,6 +751,8 @@ export default function App() {
             <a href="#/dashboard">Back to overview</a>
           ) : key === "dashboard" ? (
             <Dashboard />
+          ) : key === "operations" ? (
+            user.manual_inventory_enabled === true ? <InventoryOperations user={user} /> : <p>Manual inventory operations are not enabled in this deployment.</p>
           ) : config.permission &&
             !user.permissions.includes(config.permission) ? (
             <p role="alert">You do not have permission to view this page.</p>
@@ -675,6 +761,7 @@ export default function App() {
               key={route}
               page={key}
               config={config}
+              user={user}
               initialWarehouse={new URLSearchParams(route.split("?")[1]).get(
                 "warehouse",
               )}
@@ -682,7 +769,7 @@ export default function App() {
           )}
         </main>
         <footer className="app-footer">
-          IT Warehouse <span>Secure sessions · Read-only inventory</span>
+          IT Warehouse <span>Secure sessions · Inventory visibility</span>
         </footer>
       </div>
     </div>

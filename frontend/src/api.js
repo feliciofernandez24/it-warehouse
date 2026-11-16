@@ -1,8 +1,9 @@
 let csrfToken = null;
 export class ApiError extends Error {
-  constructor(message, status) {
+  constructor(message, status, details = null) {
     super(message);
     this.status = status;
+    this.details = details;
   }
 }
 export async function request(path, options = {}) {
@@ -33,12 +34,19 @@ export async function request(path, options = {}) {
         ? data.detail
         : "Request failed (" + response.status + ").",
       response.status,
+      data,
     );
   }
   if (data?.csrfToken) csrfToken = data.csrfToken;
   return data;
 }
 export const api = {
+  save: async (path, method, body) => {
+    if (!["POST", "PUT", "PATCH"].includes(method))
+      throw new Error("Unsupported change method");
+    await request("/api/auth/csrf/");
+    return request(path, { method, body: JSON.stringify(body) });
+  },
   me: () => request("/api/auth/me/"),
   login: async (username, password) => {
     await request("/api/auth/csrf/");

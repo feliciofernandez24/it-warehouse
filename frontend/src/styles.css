@@ -798,3 +798,152 @@ tbody tr:hover {
     transition: none !important;
   }
 }
+
+/* Phase 4B master forms reuse the existing panel, input and button palette. */
+.management-bar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  min-height: 4px;
+}
+.success-notice {
+  color: #287965;
+  background: #edf8f2;
+  border: 1px solid #ceeadd;
+  padding: 10px 15px;
+  border-radius: 7px;
+  font-size: 13px;
+  margin: 0;
+}
+.editor-backdrop {
+  position: fixed;
+  inset: 0;
+  background: #10213988;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.master-editor {
+  background: white;
+  border-radius: 13px;
+  width: min(640px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 24px 80px #11284444;
+}
+.master-editor form {
+  padding: 20px 25px;
+}
+.master-editor fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.editor-field:has(textarea),
+.editor-field:has(.lookup) {
+  grid-column: 1/-1;
+}
+.editor-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #576b86;
+}
+.editor-field small,
+.lookup small {
+  font-size: 10px;
+  color: #8796aa;
+}
+.editor-field textarea {
+  font: inherit;
+  border: 1px solid #dce2eb;
+  border-radius: 8px;
+  padding: 11px;
+  resize: vertical;
+  min-height: 65px;
+  max-width: 100%;
+  color: #243146;
+}
+.editor-field input[readonly] {
+  background: #f4f6fa;
+  color: #7c8b9f;
+}
+.editor-field input[type="checkbox"] {
+  align-self: flex-start;
+  width: 20px;
+  height: 20px;
+}
+.editor-field .error,
+.lookup small[role="alert"] {
+  color: #ab4c4c;
+}
+.lookup {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.lookup select,
+.lookup input {
+  min-width: 0;
+  width: 100%;
+}
+.lookup small {
+  grid-column: 1/-1;
+}
+.lookup small button {
+  font-size: 9px;
+  padding: 3px 6px;
+  margin-left: 6px;
+}
+.editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 24px;
+  border-top: 1px solid #edf0f5;
+  margin-top: 22px;
+}
+.master-editor .notice {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.master-editor .warning {
+  border: 1px solid #eddfbe;
+}
+@media (max-width: 600px) {
+  .editor-backdrop {
+    padding: 10px;
+  }
+  .master-editor form {
+    padding: 17px;
+  }
+  .master-editor fieldset {
+    grid-template-columns: 1fr;
+  }
+  .lookup {
+    grid-template-columns: 1fr;
+  }
+  .management-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Manual transaction forms use the existing workspace palette. */
+.master-form { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1rem; padding:1.25rem; }
+.master-form label { display:flex; flex-direction:column; gap:.4rem; }
+.master-form h2,.master-form p { grid-column:1/-1; }
+[aria-label="Confirm stock transaction"] { padding:1.25rem; border:1px solid var(--border); }
+[aria-label="Confirm stock transaction"] pre { white-space:pre-wrap; overflow-wrap:anywhere; }
