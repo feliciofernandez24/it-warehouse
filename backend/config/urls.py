@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -14,5 +14,6 @@ def health(request):
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/", include("config.api_urls")),
     path("api/health/", health, name="health"),
 ]

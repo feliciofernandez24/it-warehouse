@@ -66,3 +66,26 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Phase 4A: same-origin sessions and bounded API reads.
+# Cookies default to Secure outside explicitly enabled DEBUG development.
+_COOKIE_SECURE_DEFAULT = "false" if os.environ.get("DJANGO_DEBUG", "false").lower() in {"true", "1", "yes"} else "true"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = os.environ.get("DJANGO_SESSION_COOKIE_SECURE", _COOKIE_SECURE_DEFAULT).lower() == "true"
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SECURE = os.environ.get("DJANGO_CSRF_COOKIE_SECURE", _COOKIE_SECURE_DEFAULT).lower() == "true"
+SESSION_COOKIE_AGE = 8 * 60 * 60
+CSRF_FAILURE_VIEW = "apps.accounts.session_api.csrf_failure"
+API_PAGE_SIZE = min(100, max(1, int(os.environ.get("API_PAGE_SIZE", "25"))))
+LOGIN_WINDOW_SECONDS = 60
+LOGIN_ACCOUNT_LIMIT = 5
+LOGIN_PEER_LIMIT = 30
+CACHES = {
+    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "itw-default"},
+    "login": {
+        "BACKEND": os.environ.get("LOGIN_CACHE_BACKEND", "django.core.cache.backends.locmem.LocMemCache"),
+        "LOCATION": os.environ.get("LOGIN_CACHE_LOCATION", "itw-login"),
+    },
+}
