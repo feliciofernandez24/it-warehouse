@@ -2,6 +2,9 @@
 from django.db import DatabaseError, IntegrityError
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework import serializers
+from rest_framework.exceptions import MethodNotAllowed
+from .master_delete import remove, ALLOWED
 from rest_framework.parsers import JSONParser
 from . import master_serializers as s, read_api as reads
 from .master_service import Conflict, Unavailable, mutate
@@ -12,6 +15,8 @@ class MasterPermission(BasePermission):
         model = view.queryset.model
         opts = model._meta
         permissions = [f"{opts.app_label}.view_{opts.model_name}"]
+        if request.method == "DELETE" and opts.model_name != "asset":
+            permissions.append(f"{opts.app_label}.delete_{opts.model_name}")
         if request.method in ("POST", "PUT", "PATCH"):
             permissions.append(f"{opts.app_label}.{'add' if request.method == 'POST' else 'change'}_{opts.model_name}")
         # Editing asset metadata contains serials/notes excluded from ordinary asset reads.
@@ -23,7 +28,7 @@ class MasterPermission(BasePermission):
 class Managed:
     parser_classes = (JSONParser,)
     permission_classes = (IsAuthenticated, MasterPermission)
-    http_method_names = ("get", "post", "put", "patch", "head", "options")
+    http_method_names = ("get", "post", "put", "patch", "delete", "head", "options")
     related_permissions = {}
 
     def get_serializer_class(self):
@@ -43,6 +48,24 @@ class Managed:
         except DatabaseError:
             raise Unavailable() from None
         return Response(self.management_serializer(record).data, status=201 if pk is None else 200)
+
+    def destroy(self, request, *args, **kwargs):
+        if self.queryset.model not in ALLOWED:
+            raise MethodNotAllowed("DELETE")
+        class DeleteCommand(serializers.Serializer):
+            expected_version = serializers.IntegerField(min_value=0, max_value=2**63-1)
+            change_reason = serializers.CharField(max_length=500)
+        if not isinstance(request.data, dict) or set(request.data)-{"expected_version","change_reason"}:
+            raise serializers.ValidationError({"detail":"Supply only expected_version and change_reason."})
+        command=DeleteCommand(data=request.data);command.is_valid(raise_exception=True)
+        try:
+            remove(actor=request.user, model=self.queryset.model, pk=kwargs.get("pk"),
+                   expected_version=command.validated_data["expected_version"], reason=command.validated_data["change_reason"])
+        except IntegrityError:
+            raise Conflict({"dependencies":"A dependency or inventory guard prevents deletion. Refresh; use Edit to deactivate where supported."}) from None
+        except DatabaseError:
+            raise Unavailable("Deletion is unavailable. No record was deleted; use Edit to deactivate where supported.") from None
+        return Response(status=204)
 
     def create(self, request, *args, **kwargs):
         return self.change(request)
@@ -78,6 +101,7 @@ class Locations(Managed, reads.Locations):
 
 
 class Assets(Managed, reads.Assets):
+    http_method_names = ("get", "post", "put", "patch", "head", "options")
     management_serializer = s.AssetMetadata
     registration_serializer = s.AssetRegistration
     related_permissions = {"product_model": "inventory.view_productmodel", "current_location": "warehouse.view_storagelocation"}

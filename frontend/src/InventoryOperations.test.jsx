@@ -5,7 +5,7 @@ import App from "./App";
 import {InventoryOperations} from "./InventoryOperations";
 import {api,request} from "./api";
 vi.mock("./api",()=>({api:{save:vi.fn(),me:vi.fn()},request:vi.fn()}));
-const user={permissions:["transactions.receive_stock","transactions.transfer_stock","transactions.issue_stock","transactions.return_stock","transactions.view_stockmovement","transactions.view_assetassignment","inventory.view_productmodel","inventory.view_asset","inventory.view_stockbalance","warehouse.view_storagelocation","warehouse.view_warehouse","inventory.view_assetcategory","inventory.view_manufacturer","accounts.view_assetrecipient"]};
+const user={manual_inventory_enabled:true,permissions:["inventory.add_asset","transactions.receive_stock","transactions.transfer_stock","transactions.issue_stock","transactions.return_stock","transactions.view_stockmovement","transactions.view_assetassignment","inventory.view_productmodel","inventory.view_asset","inventory.view_stockbalance","warehouse.view_storagelocation","warehouse.view_warehouse","inventory.view_assetcategory","inventory.view_manufacturer","accounts.view_assetrecipient"]};
 const lists={
  "management/product-models":[{id:1,sku_code:"SER",name:"Serial model",tracking_mode:"SERIALIZED",is_active:true,category:1,manufacturer:1},{id:2,sku_code:"BULK",name:"Bulk model",tracking_mode:"BULK",is_active:true,category:1}],
  "inventory/assets":[{id:5,asset_tag:"AST-TEST",device_name:"Device",current_location_id:7,condition:"USED",lifecycle_status:"AVAILABLE"}],
@@ -50,31 +50,31 @@ test("bulk mode shows only BULK products and explicit quantity",async()=>{
  fireEvent.click(screen.getByRole("button",{name:"Receive Bulk Stock"}));
  expect(screen.getByLabelText("Quantity in pieces")).toBeInTheDocument();
  expect(screen.queryByRole("option",{name:"SER — Serial model"})).not.toBeInTheDocument();
- expect(screen.getByRole("option",{name:"BULK — Bulk model"})).toBeInTheDocument();
+ expect(await screen.findByRole("option",{name:/BULK.*Bulk model/})).toBeInTheDocument();
 });
 test("transfer supports asset and bulk source selection",async()=>{
  render(<InventoryOperations user={user}/>);await screen.findByRole("option",{name:"SER — Serial model"});
  fireEvent.click(screen.getByRole("button",{name:"Transfer Stock"}));
  expect(screen.getByLabelText("Asset")).toBeInTheDocument();expect(screen.getByLabelText("Bulk source balance")).toBeInTheDocument();
- change("Asset","5");expect(screen.queryByLabelText("Quantity in pieces")).not.toBeInTheDocument();
+ await screen.findByRole("option",{name:/AST-TEST/});change("Asset","5");expect(screen.queryByLabelText("Quantity in pieces")).not.toBeInTheDocument();
  expect(screen.getByText(/Source: location 7/)).toBeInTheDocument();
 });
 test("issue uses actual recipient options",async()=>{
  render(<InventoryOperations user={user}/>);await screen.findByRole("option",{name:"SER — Serial model"});
  fireEvent.click(screen.getByRole("button",{name:"Issue Equipment"}));
- expect(screen.getByRole("option",{name:"Person (REC)"})).toBeInTheDocument();
+ expect(await screen.findByRole("option",{name:"Person (REC)"})).toBeInTheDocument();
  expect(screen.queryByLabelText("Destination location")).not.toBeInTheDocument();
 });
 test("return requires current assignment",async()=>{
  render(<InventoryOperations user={user}/>);await screen.findByRole("option",{name:"SER — Serial model"});
  fireEvent.click(screen.getByRole("button",{name:"Return Equipment"}));
- expect(screen.getByRole("option",{name:"Assignment 9 / asset 5 / recipient 3"})).toBeInTheDocument();
+ expect(await screen.findByRole("option",{name:"Assignment 9 / asset 5 / recipient 3"})).toBeInTheDocument();
  expect(screen.getByLabelText("Current assignment")).toBeRequired();
 });
 test("load failure is visible without fabricated success",async()=>{
  request.mockRejectedValue(new Error("Permission denied"));
  render(<InventoryOperations user={user}/>);
- await screen.findByRole("alert");expect(screen.queryByText(/Posted operation/)).not.toBeInTheDocument();
+ await screen.findAllByRole("alert");expect(screen.queryByText(/Posted operation/)).not.toBeInTheDocument();
 });
 
 test("operations navigation honors deployment gate",async()=>{

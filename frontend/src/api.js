@@ -41,6 +41,10 @@ export async function request(path, options = {}) {
   return data;
 }
 export const api = {
+  remove: async (path, body) => {
+    await request("/api/auth/csrf/");
+    return request(path, { method: "DELETE", body: JSON.stringify(body) });
+  },
   save: async (path, method, body) => {
     if (!["POST", "PUT", "PATCH"].includes(method))
       throw new Error("Unsupported change method");
@@ -60,3 +64,9 @@ export const api = {
     return request("/api/auth/logout/", { method: "POST" });
   },
 };
+
+export function errorMessages(value, prefix="") {
+ if (Array.isArray(value)) return value.flatMap(v=>errorMessages(v,prefix));
+ if (value && typeof value === "object") return Object.entries(value).flatMap(([k,v])=>errorMessages(v,["detail","non_field_errors"].includes(k)?prefix:(prefix?prefix+".":"")+k));
+ return [String(prefix?prefix+": ":"")+String(value??"")];
+}

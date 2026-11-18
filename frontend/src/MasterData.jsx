@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, request } from "./api";
+import { AssetRegistrationModal } from "./AssetRegistrationModal";
 
 const text = (key, label, extra = {}) => ({ key, label, ...extra });
 const relation = (key, label, path, permission, extra = {}) => ({
@@ -252,7 +253,7 @@ function messages(value) {
   return typeof value === "string" ? value : "Please check this field.";
 }
 
-export function MasterEditor({ page, id, user, onClose, onSaved }) {
+function LegacyMasterEditor({ page, id, user, onClose, onSaved }) {
   const config = management[page];
   const [record, setRecord] = useState(null),
     [values, setValues] = useState({}),
@@ -263,33 +264,7 @@ export function MasterEditor({ page, id, user, onClose, onSaved }) {
   const first = useRef(null),
     dialog = useRef(null);
   const permission = canManage(user, page, id ? "change" : "add");
-  const fields =
-    page === "assets" && !id
-      ? [
-          relation(
-            "product_model",
-            "Product model",
-            "inventory/product-models",
-            "inventory.view_productmodel",
-            { required: true },
-          ),
-          relation(
-            "warehouse_filter",
-            "Warehouse",
-            "warehouses",
-            "warehouse.view_warehouse",
-            { helper: true },
-          ),
-          relation(
-            "current_location",
-            "Storage location",
-            "locations",
-            "warehouse.view_storagelocation",
-            { required: true, warehouseDependent: true },
-          ),
-          ...config.fields,
-        ]
-      : config.fields;
+  const fields = config.fields;
   useEffect(() => {
     const defaults = Object.fromEntries(
       fields.map((f) => [
@@ -421,13 +396,6 @@ export function MasterEditor({ page, id, user, onClose, onSaved }) {
           </div>
         ) : (
           <form onSubmit={submit}>
-            {page === "assets" && !id && (
-              <p className="notice warning">
-                Registration is unavailable until an approved ledger-backed
-                receipt workflow exists. Phase 4B will not create an asset or
-                stock movement.
-              </p>
-            )}
             {page === "assets" && id && record && (
               <p className="notice">
                 Asset {record.asset_tag} · {record.product_name} ·{" "}
@@ -562,4 +530,9 @@ export function MasterEditor({ page, id, user, onClose, onSaved }) {
       </section>
     </div>
   );
+}
+
+export function MasterEditor(props) {
+ if (props.page === "assets" && !props.id) return <AssetRegistrationModal user={props.user} onClose={props.onClose} onSuccess={props.onRegistered}/>;
+ return <LegacyMasterEditor {...props}/>;
 }

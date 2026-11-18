@@ -92,3 +92,6 @@ CACHES = {
 
 # Manual posting requires an explicit reviewed deployment opt-in.
 MANUAL_INVENTORY_ENABLED = os.environ.get("ITW_MANUAL_INVENTORY_ENABLED", "0") == "1"
+
+# Requires separately approved five-table deletion ACLs.
+MASTER_DATA_DELETE_ENABLED = os.environ.get("ITW_MASTER_DATA_DELETE_ENABLED", "0") == "1"

@@ -21,13 +21,14 @@ MASTER_PERMISSIONS = frozenset(
     for app, model in (("inventory", "asset"), ("inventory", "assetcategory"),
                        ("inventory", "manufacturer"), ("inventory", "productmodel"),
                        ("warehouse", "warehouse"), ("warehouse", "storagelocation"))
-    for action in ("add", "change")
+    for action in ("add", "change", "delete")
+    if action != "delete" or model != "asset"
 )
 
 
 def identity(user):
     # Report existing grants only; never grant permissions or expose review capabilities.
-    return {"id": user.pk, "username": user.get_username(), "manual_inventory_enabled": settings.MANUAL_INVENTORY_ENABLED,
+    return {"id": user.pk, "username": user.get_username(), "manual_inventory_enabled": settings.MANUAL_INVENTORY_ENABLED, "master_data_delete_enabled": settings.MASTER_DATA_DELETE_ENABLED,
             "permissions": sorted(p for p in user.get_all_permissions()
                 if (p in MASTER_PERMISSIONS or p in {"transactions.receive_stock","transactions.transfer_stock","transactions.issue_stock","transactions.return_stock","accounts.view_assetrecipient","transactions.view_assetassignment"} or p.startswith(("inventory.view_asset", "inventory.view_manufacturer",
                     "inventory.view_productmodel", "inventory.view_stock", "warehouse.view_",

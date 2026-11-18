@@ -345,7 +345,7 @@ test("asset editor exposes metadata but no position or tag controls", async () =
     ),
   );
 });
-test("asset registration makes the ledger blocker explicit", () => {
+test("asset registration stays disabled without the Phase 4C feature", () => {
   render(
     <MasterEditor
       page="assets"
@@ -356,12 +356,12 @@ test("asset registration makes the ledger blocker explicit", () => {
   );
   expect(
     screen.getByText(
-      /Registration is unavailable until an approved ledger-backed receipt/,
+      /Manual asset registration is disabled/,
     ),
   ).toBeInTheDocument();
   expect(
-    screen.getByRole("button", { name: "Validate registration" }),
-  ).toBeInTheDocument();
+    screen.queryByRole("button", { name: "Review transaction" }),
+  ).not.toBeInTheDocument();
 });
 test("catalog create control opens form and refreshes after success", async () => {
   render(<App />);

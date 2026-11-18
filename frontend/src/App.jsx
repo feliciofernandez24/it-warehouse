@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { api, request } from "./api";
 import { MasterEditor, canManage, management } from "./MasterData";
+import { MasterDelete, canDelete } from "./MasterDelete";
+import { AssetRegistrationModal } from "./AssetRegistrationModal";
 import { InventoryOperations } from "./InventoryOperations";
 const pages = {
   operations: { title: "Inventory Operations", subtitle: "Register, receive, transfer, issue and return equipment", icon: "+" },
@@ -323,6 +325,8 @@ function Catalog({ page, config, initialWarehouse, user }) {
     [retry, setRetry] = useState(0),
     [detail, setDetail] = useState(null),
     [editing, setEditing] = useState(null),
+    [registering, setRegistering] = useState(false),
+    [deleting, setDeleting] = useState(null),
     [notice, setNotice] = useState("");
   useEffect(() => {
     const t = setTimeout(() => {
@@ -370,6 +374,7 @@ function Catalog({ page, config, initialWarehouse, user }) {
   }
   return (
     <>
+      {registering && <AssetRegistrationModal user={user} onClose={()=>setRegistering(false)} onSuccess={response=>{setNotice("Registered "+(response.assets?.map(a=>a.asset_tag).join(", ")||response.asset_ids.join(", "))+". Receipt "+(response.receipt?.map(r=>r.public_id).join(", ")||response.movement_ids.join(", "))+".");setRetry(x=>x+1);}}/>}
       {editing && (
         <MasterEditor
           page={page}
@@ -383,13 +388,15 @@ function Catalog({ page, config, initialWarehouse, user }) {
           }}
         />
       )}
+      {deleting && <MasterDelete page={page} row={deleting} user={user} onClose={()=>setDeleting(null)} onDeleted={message=>{setDeleting(null);setDetail(null);setNotice(message);setRetry(x=>x+1)}} onDeactivate={canManage(user,page,"change")?()=>{setEditing({id:deleting.id});setDeleting(null)}:undefined}/>}
       <div className="management-bar">
         {canManage(user, page, "add") && (
           <button
             className="primary"
             onClick={() => {
               setNotice("");
-              setEditing({ id: null });
+              if (page === "assets") setRegistering(true);
+              else setEditing({ id: null });
             }}
           >
             Register {management[page].singular}
@@ -490,6 +497,7 @@ function Catalog({ page, config, initialWarehouse, user }) {
                           <th>Details</th>
                         )}
                         {canManage(user, page, "change") && <th>Manage</th>}
+                        {canDelete(user,page)&&<th>Delete</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -546,6 +554,7 @@ function Catalog({ page, config, initialWarehouse, user }) {
                               </button>
                             </td>
                           )}
+                          {canDelete(user,page)&&<td><button className="text-button" onClick={()=>setDeleting(row)}>Delete {management[page].singular}</button></td>}
                         </tr>
                       ))}
                     </tbody>
@@ -592,6 +601,7 @@ function Catalog({ page, config, initialWarehouse, user }) {
         >
           <div className="panel-heading">
             <h2>{detail.asset_tag || detail.name}</h2>
+            {canDelete(user,page)&&<button onClick={()=>setDeleting(detail)}>Delete {management[page].singular}</button>}
             <button onClick={() => setDetail(null)}>Close</button>
           </div>
           <dl>
@@ -752,7 +762,7 @@ export default function App() {
           ) : key === "dashboard" ? (
             <Dashboard />
           ) : key === "operations" ? (
-            user.manual_inventory_enabled === true ? <InventoryOperations user={user} /> : <p>Manual inventory operations are not enabled in this deployment.</p>
+            user.manual_inventory_enabled === true ? <InventoryOperations key={route} user={user} /> : <p>Manual inventory operations are not enabled in this deployment.</p>
           ) : config.permission &&
             !user.permissions.includes(config.permission) ? (
             <p role="alert">You do not have permission to view this page.</p>

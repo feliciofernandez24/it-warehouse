@@ -20,6 +20,7 @@ run(["docker","run","-d","--name",CLIENT,"--label","itw.phase4c=true","--network
      "itw-phase4c-backend-validation","sleep","infinity"])
 stages=[
 ("phase4c",[],["python","manage.py","test","config.test_phase4c","--noinput"]),
+("master-delete",[],["python","manage.py","test","config.test_master_delete","--noinput"]),
 ("phase4b",[],["python","manage.py","test","config.test_phase4b","--noinput"]),
 ("phase4a",[],["python","manage.py","test","config.test_phase4a","--noinput"]),
 ("current",[],["python","manage.py","test","config.tests","apps.inventory.test_staging","apps.transactions.test_engine",
@@ -35,6 +36,7 @@ stages=[
 ("system-check",["-e","POSTGRES_PASSWORD=runtime-rehearsal-admin-only"],["python","manage.py","check"]),
 ]
 stages.append(("phase4c-runtime",["-e","POSTGRES_PASSWORD=runtime-rehearsal-admin-only"],["python","phase4c_validation/runtime_probe.py"]))
+stages.append(("master-delete-runtime",["-e","POSTGRES_PASSWORD=runtime-rehearsal-admin-only"],["python","phase4c_validation/master_delete_runtime.py"]))
 for name,env,args in stages:
     result=subprocess.run(["docker","exec",*env,CLIENT,*args],stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
     with os.fdopen(os.open(OUT/(name+".log"),os.O_CREAT|os.O_TRUNC|os.O_WRONLY,0o600),"wb") as f:f.write(result.stdout)

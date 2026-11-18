@@ -86,3 +86,12 @@ test("management client rejects unsupported mutation methods", async () => {
   ).rejects.toThrow("Unsupported change method");
   expect(fetch).not.toHaveBeenCalled();
 });
+
+
+test("master deletion bootstraps CSRF and sends explicit version/reason", async () => {
+  fetch.mockResolvedValueOnce(response({csrfToken:"delete-token"})).mockResolvedValueOnce({ok:true,status:204,json:async()=>{throw new Error("No content")}});
+  await api.remove("/api/management/categories/1/",{expected_version:3,change_reason:"Unused"});
+  expect(fetch.mock.calls[1][1].method).toBe("DELETE");
+  expect(fetch.mock.calls[1][1].headers["X-CSRFToken"]).toBe("delete-token");
+  expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({expected_version:3,change_reason:"Unused"});
+});

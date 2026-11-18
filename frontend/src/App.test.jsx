@@ -160,3 +160,12 @@ test("session expiry returns to sign-in", async () => {
   expect(await screen.findByText("Welcome back")).toBeInTheDocument();
   expect(screen.getByRole("alert")).toHaveTextContent("Your session expired");
 });
+
+
+test("dashboard renders nonempty immutable activity without master deletion controls", async () => {
+  request.mockResolvedValue({...summary,recent_activity:[{id:7,operation_type:"STOCK_IN",quantity:2,recorded_at:"2026-11-18T00:00:00Z"}]});
+  render(<App/>);
+  expect(await screen.findByRole("cell",{name:"Stock In"})).toBeInTheDocument();
+  expect(screen.getByRole("cell",{name:"2"})).toBeInTheDocument();
+  expect(screen.queryByRole("button",{name:/Delete/})).not.toBeInTheDocument();
+});

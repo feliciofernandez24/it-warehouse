@@ -240,9 +240,9 @@ class MasterTests(TestCase):
         self.user.user_permissions.remove(Permission.objects.get(content_type__app_label="inventory", codename="change_assetcategory"))
         self.assertEqual(self.change("categories", self.category, {"name": "Denied"}).status_code, 403)
 
-    def test_no_delete_and_no_legacy_write_routes(self):
+    def test_delete_requires_permission_and_no_legacy_write_routes(self):
         for resource, obj in (("categories", self.category), ("assets", self.asset), ("warehouses", self.site)):
-            self.assertEqual(self.client.delete(PREFIX + resource + "/" + str(obj.pk) + "/").status_code, 405)
+            self.assertEqual(self.client.delete(PREFIX + resource + "/" + str(obj.pk) + "/").status_code, 405 if resource=="assets" else 403)
         self.assertEqual(self.client.post("/api/inventory/categories/", {}, content_type="application/json").status_code, 405)
         self.assertEqual(self.client.post("/api/stock/post/", {}, content_type="application/json").status_code, 404)
 

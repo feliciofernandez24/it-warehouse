@@ -25,6 +25,11 @@ def authorize(actor, action):
         raise PermissionDenied()
     return actor
 
+def describe(result):
+    result["assets"] = list(Asset.objects.filter(pk__in=result["asset_ids"]).order_by("pk").values("id","asset_tag"))
+    result["receipt"] = list(StockMovement.objects.filter(id__in=result["movement_ids"]).order_by("line_number").values("id","public_id","recorded_at","operation_type","quantity"))
+    return result
+
 @transaction.atomic
 def execute(*, actor, action, data):
     with connection.cursor() as c: c.execute("SELECT pg_advisory_xact_lock(73921,2)")
@@ -40,7 +45,7 @@ def execute(*, actor, action, data):
         # Authorization rechecked above; replay uses original immutable identifiers.
         ids=list(StockMovement.objects.filter(operation_key=key).order_by("line_number").values_list("id",flat=True))
         assets=list(StockMovement.objects.filter(operation_key=key,asset__isnull=False).values_list("asset_id",flat=True))
-        return {"operation_key":str(key),"movement_ids":ids,"asset_ids":assets,"replayed":True,"warnings":audit["after"].get("warnings",[])}
+        return describe({"operation_key":str(key),"movement_ids":ids,"asset_ids":assets,"replayed":True,"warnings":audit["after"].get("warnings",[])})
     values={k:v for k,v in data.items() if k not in ("operation_key","reason","external_reference","description","assignment_id")}
     if action in ("register","receive"):
         product=ProductModel.objects.select_for_update().get(pk=data["product_model_id"])
@@ -77,4 +82,4 @@ def execute(*, actor, action, data):
     AssetChangeLog.objects.create(entity_kind="transactions.stockmovement",entity_pk=result.movement_ids[0],
         asset_id=result.asset_ids[0] if result.asset_ids else None,actor=actor,action="MANUAL_"+action.upper(),
         operation_key=key,before={},after={"manual_fingerprint":fingerprint,"movement_ids":list(result.movement_ids),"asset_ids":list(result.asset_ids),"warnings":warnings},reason=data["reason"])
-    return {"operation_key":str(key),"movement_ids":list(result.movement_ids),"asset_ids":list(result.asset_ids),"replayed":False,"warnings":warnings}
+    return describe({"operation_key":str(key),"movement_ids":list(result.movement_ids),"asset_ids":list(result.asset_ids),"replayed":False,"warnings":warnings})
