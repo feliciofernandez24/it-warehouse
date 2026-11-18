@@ -24,20 +24,20 @@ async function register(){
  await screen.findByRole("option",{name:"SER — Serial model"});
  change("Product model","1");change("Device name","Named equipment");change("Serial number (optional)","00123");
  change("Destination warehouse","4");change("Destination location","7");change("Condition","USED");change("Stock state","AVAILABLE");change("Reason / remarks","Manual receipt");
- fireEvent.click(screen.getByRole("button",{name:"Review transaction"}));
+ fireEvent.click(screen.getByRole("button",{name:"Review registration"}));
 }
 test("registration confirms before posting and shows actual API result",async()=>{
  await register();expect(api.save).not.toHaveBeenCalled();
- fireEvent.click(screen.getByRole("button",{name:"Confirm and post"}));
- await screen.findByText(/Posted operation posted/);
+ fireEvent.click(screen.getByRole("button",{name:"Confirm & register"}));
+ await screen.findByText(/Asset registered/);
  const [url,method,body]=api.save.mock.calls[0];expect(url).toBe("/api/transactions/manual/register/");expect(method).toBe("POST");expect(body.serial_raw).toBe("00123");expect(body).not.toHaveProperty("asset_tag");
 });
 test("uncertain failure retains identical operation key and payload",async()=>{
  api.save.mockRejectedValueOnce(new Error("Unavailable"));
- await register();fireEvent.click(screen.getByRole("button",{name:"Confirm and post"}));
+ await register();fireEvent.click(screen.getByRole("button",{name:"Confirm & register"}));
  await screen.findByRole("alert");
- fireEvent.click(screen.getByRole("button",{name:"Confirm and post"}));
- await screen.findByText(/Posted operation posted/);
+ fireEvent.click(screen.getByRole("button",{name:"Confirm & register"}));
+ await screen.findByText(/Asset registered/);
  expect(api.save.mock.calls[0][2]).toEqual(api.save.mock.calls[1][2]);
 });
 test("viewer cannot see posting controls",async()=>{

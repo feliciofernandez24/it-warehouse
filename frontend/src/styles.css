@@ -948,22 +948,129 @@ tbody tr:hover {
 [aria-label="Confirm stock transaction"] { padding:1.25rem; border:1px solid var(--border); }
 [aria-label="Confirm stock transaction"] pre { white-space:pre-wrap; overflow-wrap:anywhere; }
 
-/* Reusable serialized receipt form and accessible Assets-page modal. */
-.asset-registration-modal { width:min(900px,100%); max-height:min(92dvh,980px); display:flex; flex-direction:column; background:#fff; border-radius:13px; box-shadow:0 24px 80px #11284444; overflow:hidden; }
-.asset-registration-header,.asset-registration-footer { flex:none; display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:18px 24px; background:#fff; }
-.asset-registration-header { border-bottom:1px solid #edf0f5; }
-.asset-registration-header h2 { margin:.3rem 0 0; }
-.asset-registration-footer { border-top:1px solid #edf0f5; }
-.asset-registration-footer span { color:#576b86; font-size:12px; }
-.asset-registration-body { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:20px 24px; }
-.serialized-registration { padding:20px; min-width:0; }
-.asset-registration-body .serialized-registration { padding:0; }
-.serialized-registration>h2 { font-size:18px; }
-.registration-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
-.registration-fields .editor-field:has(textarea),.registration-wide { grid-column:1/-1; }
-.registration-form input,.registration-form select,.registration-form textarea { width:100%; min-width:0; }
-.registration-confirmation { padding:16px; border:1px solid #dce2eb; border-radius:8px; margin-top:16px; }
-.registration-confirmation pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:230px; overflow:auto; }
-.registration-confirmation button { margin:4px 10px 4px 0; }
-.registration-success { margin:12px 0; overflow-wrap:anywhere; }
-@media(max-width:600px) { .asset-registration-backdrop { padding:8px; } .asset-registration-modal { max-height:96dvh; } .asset-registration-header,.asset-registration-footer { padding:12px 14px; } .asset-registration-body { padding:14px; } .registration-fields { grid-template-columns:minmax(0,1fr); } .asset-registration-footer span { max-width:65%; } }
+/* Professional shared registration surface; only the modal body scrolls. */
+.asset-registration-backdrop { padding:24px; background:rgba(11,24,43,.62); backdrop-filter:blur(3px); }
+.asset-registration-modal { width:min(960px,100%); max-height:calc(100dvh - 48px); display:flex; flex-direction:column; overflow:hidden; border:1px solid #233d60; border-radius:16px; background:#f5f7fb; box-shadow:0 30px 90px #06182b55; }
+.asset-registration-header { flex:none; padding:24px 28px 0; color:white; background:#142b49; }
+.registration-header-main { display:flex; align-items:center; gap:16px; }
+.registration-header-icon { width:52px; height:52px; flex:none; display:grid; place-items:center; color:#bfdaff; background:#24466e; border:1px solid #42658a; border-radius:12px; }
+.registration-header-icon svg { width:29px; height:29px; }
+.registration-header-copy { flex:1; min-width:0; }
+.asset-registration-header .eyebrow { font-size:10px; letter-spacing:.12em; color:#adc4de; }
+.asset-registration-header h2 { color:#fff; font-size:23px; letter-spacing:-.035em; line-height:1.3; margin:4px 0; }
+.registration-header-copy p { margin:0; font-size:12px; color:#c3d2e3; }
+.registration-close { display:flex; align-items:center; gap:7px; padding:7px 10px; color:#dfebf8; background:transparent; border:1px solid #49627f; border-radius:7px; align-self:flex-start; }
+.registration-close span:first-child { font-size:21px; line-height:1; font-weight:400; }
+.registration-close:hover { color:#fff; background:#29496d; }
+.registration-progress { display:flex; list-style:none; gap:28px; padding:19px 0 15px; margin:0; font-size:12px; }
+.registration-progress li { display:flex; align-items:center; gap:8px; color:#9fb4cc; font-weight:500; }
+.registration-progress li>span { display:grid; place-items:center; width:23px; height:23px; border:1px solid #5c728c; border-radius:50%; font-size:10px; }
+.registration-progress .current { color:white; font-weight:700; }
+.registration-progress .current>span { border-color:#c2dcff; background:#c2dcff; color:#142b49; }
+.registration-progress .complete { color:#b9e3d6; }
+.registration-progress .complete>span { border-color:#8ec7b4; }
+.asset-registration-body { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; padding:22px 28px; }
+.asset-registration-footer { flex:none; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 28px; background:white; border-top:1px solid #dce4ef; }
+.registration-footer-context { color:#65768c; font-size:12px; }
+.registration-footer-context b { color:#b34848; }
+.registration-footer-actions { display:flex; justify-content:flex-end; align-items:center; gap:10px; }
+.registration-footer-actions button,.registration-inline-actions button { padding:10px 18px; min-height:42px; }
+.registration-footer-actions .primary,.registration-inline-actions .primary { color:#fff; background:#275ec7; border-color:#275ec7; box-shadow:0 2px 4px #2455b51a; }
+.registration-footer-actions .primary:hover,.registration-inline-actions .primary:hover { background:#1d4fac; }
+.registration-back { background:transparent; border-color:transparent; padding-left:0; color:#315b95; }
+.serialized-registration { padding:24px; min-width:0; }
+.embedded-registration { padding:0; }
+.registration-inline-heading { display:flex; align-items:center; gap:14px; margin-bottom:8px; }
+.registration-inline-heading h2 { font-size:21px; }
+.registration-inline-heading p { margin:4px 0; color:#65768c; font-size:12px; }
+.serialized-registration:not(.embedded-registration)>.registration-progress { border-bottom:1px solid #e2e8f0; margin-bottom:20px; padding:12px 0 18px; }
+.serialized-registration:not(.embedded-registration)>.registration-progress li { color:#6c7f98; }
+.serialized-registration:not(.embedded-registration)>.registration-progress .current { color:#244d87; }
+.serialized-registration:not(.embedded-registration)>.registration-progress li>span { border-color:#a4b5ca; }
+.registration-section { display:block; min-width:0; margin:0 0 16px; padding:15px 18px 18px; border:1px solid #dee5ef; border-radius:11px; background:#fff; }
+.registration-section legend { padding:0 7px 0 0; color:#223b5e; font-family:Manrope,system-ui,sans-serif; font-weight:750; font-size:13px; letter-spacing:-.01em; }
+.registration-section-number { display:inline-grid; place-items:center; margin-right:8px; padding:3px 6px; color:#526f96; font:600 10px "DM Sans",sans-serif; border:1px solid #dce6f3; border-radius:4px; background:#f0f5fc; }
+.registration-section-description { font-size:11px; color:#78879a; margin:0 0 13px; }
+.registration-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px 18px; }
+.registration-fields .editor-field { min-width:0; gap:6px; }
+.registration-fields .editor-field label { color:#405572; font-size:12px; font-weight:600; }
+.registration-fields .is-required>label::after { content:" *"; color:#b34848; }
+.registration-form input,.registration-form select,.registration-form textarea { width:100%; min-width:0; padding:10px 12px; border:1px solid #d6dfeb; border-radius:7px; background:#fff; color:#243b59; font-size:13px; line-height:1.4; transition:border-color .15s,box-shadow .15s; }
+.registration-form input:hover,.registration-form select:hover,.registration-form textarea:hover { border-color:#a6bad6; }
+.registration-form :is(input,select,textarea):focus { outline:2px solid #b6d0ff; outline-offset:1px; border-color:#5482d5; }
+.registration-form [aria-invalid="true"] { border-color:#c75c5c; background:#fffafa; }
+.registration-form textarea { min-height:68px; max-height:160px; resize:vertical; font:inherit; font-size:13px; }
+.registration-wide,.catalog-specifications { grid-column:1/-1; min-width:0; }
+.catalog-specifications { border:1px solid #dce7f4; border-radius:8px; background:#f6f9fe; overflow-wrap:anywhere; }
+.catalog-specifications header { display:flex; gap:10px; align-items:center; padding:12px 14px; border-bottom:1px solid #e1eaf5; }
+.registration-mini-icon { width:30px; height:30px; border-radius:7px; display:grid; place-items:center; flex:none; color:#4d70a5; background:#e8f0fc; }
+.registration-mini-icon svg { width:18px; height:18px; }
+.catalog-specifications h4 { margin:0; font-size:12px; color:#3d5b84; }
+.catalog-specifications header p { margin:1px 0 0; color:#7c8da4; font-size:10px; }
+.catalog-readonly { margin-left:auto; color:#627f9f; font-size:10px; white-space:nowrap; border:1px solid #d9e4f2; border-radius:4px; padding:2px 6px; }
+.specification-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 20px; margin:0; padding:13px 14px; }
+.specification-grid dt { color:#75849a; font-size:10px; margin-bottom:3px; }
+.specification-grid dd { margin:0; color:#354d6c; font-size:12px; font-weight:600; }
+.catalog-empty { padding:12px 14px; margin:0; color:#77879e; font-size:11px; }
+.value-empty { color:#8b97a7!important; font-weight:400!important; }
+.registration-review { border:1px solid #dce4ef; background:#fff; border-radius:11px; padding:20px; }
+.registration-review-heading { display:flex; align-items:center; gap:12px; padding-bottom:17px; border-bottom:1px solid #e6ecf4; }
+.registration-review h3 { color:#243e61; font-size:16px; }
+.registration-review-heading p { margin:4px 0 0; font-size:12px; color:#72849b; }
+.registration-review-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 24px; margin:0; padding:4px 0 15px; }
+.registration-review-grid>div { padding:13px 0; border-bottom:1px solid #edf1f6; min-width:0; }
+.registration-review-grid dt { font-size:11px; color:#7b8ba1; margin-bottom:4px; }
+.registration-review-grid dd { margin:0; font-size:13px; color:#273e5c; font-weight:600; overflow-wrap:anywhere; white-space:pre-wrap; }
+.registration-review-grid .review-wide { grid-column:1/-1; }
+.registration-immutable-notice { display:flex; align-items:flex-start; gap:10px; padding:12px 14px; color:#7d632e; background:#fff9eb; border:1px solid #efe0bd; border-radius:7px; }
+.registration-immutable-notice svg { flex:none; width:18px; height:18px; margin-top:2px; }
+.registration-immutable-notice p { font-size:11px; line-height:1.65; margin:0; }
+.registration-immutable-notice strong { display:block; }
+.registration-success { text-align:center; padding:22px 16px; border:1px solid #d3e6dd; border-radius:12px; background:#fff; color:#274c3d; overflow-wrap:anywhere; }
+.registration-success-icon { display:grid; place-items:center; width:54px; height:54px; margin:0 auto 14px; background:#e9f6ef; color:#32916d; border:1px solid #cce6d8; border-radius:50%; }
+.registration-success-icon svg { width:28px; height:28px; }
+.registration-success h3 { font-size:21px; color:#234b3b; }
+.registration-success>p { font-size:12px; color:#72847c; }
+.registration-success-record { padding:18px; margin:18px auto 12px; max-width:500px; background:#f4f9f6; border:1px solid #dfece4; border-radius:8px; }
+.registration-success-record span,.registration-success-receipt>span { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#768a80; margin-bottom:5px; }
+.registration-success-record strong { display:block; font-size:17px; font-family:ui-monospace,monospace; color:#285840; }
+.registration-success-receipt { padding:8px; }
+.registration-success-receipt strong { display:block; font-size:12px; color:#3d5b4e; font-family:ui-monospace,monospace; }
+.registration-success-receipt small { display:block; font-size:11px; color:#7e8e85; margin-top:5px; }
+.registration-result-warning { background:#fff9eb; padding:10px; border-radius:6px; }
+.registration-inline-actions { display:flex; align-items:center; justify-content:space-between; gap:14px; border-top:1px solid #e0e6ef; padding:16px 0 0; margin-top:18px; }
+.registration-inline-actions>span { font-size:11px; color:#74849a; }
+.registration-inline-actions>div { display:flex; gap:10px; }
+.registration-loading { display:flex; align-items:center; justify-content:center; gap:12px; padding:50px 10px; color:#71839b; font-size:13px; }
+.registration-error-banner,.registration-field-summary { padding:12px 14px; margin:0 0 15px; color:#a84444; background:#fff4f3; border:1px solid #edcccc; border-radius:7px; font-size:12px; }
+.registration-field-summary p { margin:3px 0; }
+@media(max-width:640px) {
+ .asset-registration-backdrop { padding:8px; }
+ .asset-registration-modal { max-height:calc(100dvh - 16px); border-radius:12px; }
+ .asset-registration-header { padding:18px 16px 0; }
+ .registration-header-main { gap:11px; align-items:flex-start; }
+ .registration-header-icon { width:40px; height:40px; border-radius:9px; }
+ .registration-header-icon svg { width:24px; height:24px; }
+ .asset-registration-header h2 { font-size:20px; }
+ .asset-registration-header .eyebrow { font-size:8px; }
+ .registration-header-copy p { font-size:10px; }
+ .registration-close { padding:5px 7px; }
+ .registration-close span:last-child { display:none; }
+ .registration-progress { gap:19px; padding:15px 0 13px; font-size:11px; }
+ .asset-registration-body { padding:16px 12px; }
+ .registration-fields,.specification-grid,.registration-review-grid { grid-template-columns:minmax(0,1fr); }
+ .registration-section { padding:12px; margin-bottom:14px; }
+ .asset-registration-footer { padding:12px; gap:8px; }
+ .registration-footer-context { font-size:10px; }
+ .registration-footer-actions { gap:7px; }
+ .registration-footer-actions button { padding:9px 11px; font-size:12px; min-height:40px; }
+ .registration-footer-context .registration-back { padding:7px 0; font-size:11px; }
+ .catalog-readonly { display:none; }
+ .registration-review { padding:15px; }
+ .serialized-registration:not(.embedded-registration) { padding:16px; }
+ .registration-inline-actions { flex-wrap:wrap; }
+ .registration-inline-actions>div { width:100%; justify-content:flex-end; }
+}
+@media(prefers-reduced-motion:reduce) { .registration-form input,.registration-form select,.registration-form textarea { transition:none; } }
+
+.registration-close svg { width:15px; height:15px; display:block; }

@@ -1,32 +1,29 @@
-import React, {forwardRef,useEffect,useLayoutEffect,useId,useImperativeHandle,useRef,useState} from "react";
+import React,{forwardRef,useEffect,useLayoutEffect,useId,useImperativeHandle,useRef,useState} from "react";
 import {api,request,errorMessages} from "./api";
+import {CatalogSpecifications,RegistrationSection,RegistrationReview,RegistrationReceipt,RegistrationProgress,EquipmentIcon} from "./RegistrationPresentation";
+export {RegistrationReceipt} from "./RegistrationPresentation";
+
+const fieldLabels={device_name:"Device name",serial_raw:"Serial number",product_model_id:"Product model",destination_location_id:"Storage location",condition:"Condition",state:"Stock state",reason:"Reason / remarks",description:"Description",external_reference:"External reference"};
+function registrationErrors(value){return errorMessages(value).map(message=>message.replace(/^([a-z_]+):/,(_,key)=>(fieldLabels[key]||key.replaceAll("_"," "))+":"));}
 
 const requiredPermissions=["transactions.receive_stock","inventory.add_asset","inventory.view_asset","inventory.view_productmodel","warehouse.view_warehouse","warehouse.view_storagelocation"];
 export const canRegisterAsset=user=>user.manual_inventory_enabled===true&&requiredPermissions.every(p=>user.permissions.includes(p));
 
-export function RegistrationReceipt({result}) {
- return <div className="success-notice registration-success" role="status" tabIndex={-1}>
-  <strong>Posted operation {result.operation_key}.</strong>
-  <p>Assets: {result.assets?.map(a=>a.asset_tag).join(", ")||result.asset_ids?.join(", ")}</p>
-  <p>Movements: {result.movement_ids?.join(", ")}</p>
-  {result.receipt?.map(r=><p key={r.id}>Receipt {r.public_id} · {r.operation_type} · {r.recorded_at}</p>)}
-  {result.warnings?.map(w=><p key={w}>{w}</p>)}
- </div>;
-}
-
-// One serialized-registration request builder and posting boundary for both hosts.
 export const SerializedAssetRegistration=forwardRef(function SerializedAssetRegistration(
- {user,onSuccess,onStateChange,autoFocus=false,allowAnother=true},ref
-) {
+ {user,onSuccess,onStateChange,autoFocus=false,allowAnother=true,embedded=false,externalActions=false},ref
+){
  const [data,setData]=useState({}),[lists,setLists]=useState({}),[loading,setLoading]=useState(true);
  const [lookupRevision,setLookupRevision]=useState(0),[lookupError,setLookupError]=useState("");
  const [pending,setPending]=useState(null),[busy,setBusy]=useState(false),[result,setResult]=useState(null),[error,setError]=useState(""),[errors,setErrors]=useState(null);
  const [category,setCategory]=useState(""),[manufacturer,setManufacturer]=useState("");
- const inFlight=useRef(false),completed=useRef(false),pendingRef=useRef(null),uncertain=useRef(false),first=useRef(null),success=useRef(null);
- const id=useId(),permitted=canRegisterAsset(user);
+ const inFlight=useRef(false),completed=useRef(false),pendingRef=useRef(null),uncertain=useRef(false),first=useRef(null),success=useRef(null),reviewHeading=useRef(null),formElement=useRef(null);
+ const id=useId(),permitted=canRegisterAsset(user),step=result?"success":pending?"review":"details";
  const dirty=!result&&(Boolean(category||manufacturer||pending)||Object.values(data).some(v=>String(v??"").length>0));
- useImperativeHandle(ref,()=>({getCloseState:()=>({busy:inFlight.current,dirty,uncertain:uncertain.current,operationKey:pendingRef.current?.operation_key})}),[dirty]);
- useLayoutEffect(()=>{onStateChange?.({busy,pending:Boolean(pending),dirty});},[busy,pending,dirty,onStateChange]);
+ useImperativeHandle(ref,()=>({
+  getCloseState:()=>({busy:inFlight.current,dirty,uncertain:uncertain.current}),
+  review:()=>formElement.current?.requestSubmit(),confirm:()=>post(),back:()=>editPending()
+ }));
+ useLayoutEffect(()=>{onStateChange?.({busy,pending:Boolean(pending),dirty,step,loading,canSubmit:permitted&&!loading&&!lookupError});},[busy,pending,dirty,step,loading,permitted,lookupError,onStateChange]);
  useEffect(()=>{
   if(!permitted){setLoading(false);return;}
   const controller=new AbortController();let active=true;setLoading(true);setLookupError("");
@@ -35,10 +32,7 @@ export const SerializedAssetRegistration=forwardRef(function SerializedAssetRegi
    const entries=await Promise.all(Object.entries(endpoints).map(async([key,[path,permission]])=>{
     if(!user.permissions.includes(permission))return [key,[]];
     let next="/api/"+path+"/?page_size=100",rows=[];
-    while(next){
-     const page=await request(next,{signal:controller.signal});rows=rows.concat(page.results);
-     next=page.next?new URL(page.next,window.location.origin).pathname+new URL(page.next,window.location.origin).search:null;
-    }
+    while(next){const page=await request(next,{signal:controller.signal});rows=rows.concat(page.results);next=page.next?new URL(page.next,window.location.origin).pathname+new URL(page.next,window.location.origin).search:null;}
     return [key,rows];
    }));
    if(active)setLists(Object.fromEntries(entries));
@@ -46,8 +40,8 @@ export const SerializedAssetRegistration=forwardRef(function SerializedAssetRegi
   load().catch(e=>{if(active&&e.name!=="AbortError")setLookupError(e.message);}).finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;controller.abort();};
  },[user,permitted,lookupRevision]);
- useEffect(()=>{if(autoFocus&&!loading&&!lookupError&&permitted)first.current?.focus();},[autoFocus,loading,lookupError,permitted]);
- useEffect(()=>{if(result)success.current?.querySelector('[role="status"]')?.focus();},[result]);
+ useEffect(()=>{if(autoFocus&&!loading&&!lookupError&&permitted&&step==="details")first.current?.focus();},[autoFocus,loading,lookupError,permitted,step]);
+ useEffect(()=>{if(step==="success")success.current?.querySelector('[role="status"]')?.focus();if(step==="review")reviewHeading.current?.focus();},[step]);
  function update(key,value){
   if(pendingRef.current||inFlight.current)return;
   setData(old=>({...old,[key]:value,...(key==="warehouse_id"?{destination_location_id:""}:{})}));
@@ -68,68 +62,65 @@ export const SerializedAssetRegistration=forwardRef(function SerializedAssetRegi
   catch(e){
    setError(e.message);setErrors(e.details||null);
    if(e.status===400){pendingRef.current=null;setPending(null);uncertain.current=false;}
-   else{uncertain.current=true;setError(e.message+" Retry uses the same operation key and unchanged values.");}
+   else{uncertain.current=true;setError(e.message+" Retry this registration without changing its details.");}
    return;
   }finally{inFlight.current=false;setBusy(false);}
-  completed.current=true;pendingRef.current=null;uncertain.current=false;
-  setPending(null);setData({});setResult(response);
-  onSuccess?.(response);
+  completed.current=true;pendingRef.current=null;uncertain.current=false;setPending(null);setData({});setResult(response);onSuccess?.(response);
  }
  function editPending(){
   if(inFlight.current)return;
-  if(uncertain.current&&!window.confirm("The posting result is unconfirmed. Verify activity before abandoning this operation key. Edit the request?"))return;
-  pendingRef.current=null;uncertain.current=false;setPending(null);
+  if(uncertain.current&&!window.confirm("The registration result is unconfirmed. Check Inventory Activity before editing or starting again. Return to editing?"))return;
+  pendingRef.current=null;uncertain.current=false;setPending(null);setError("");setErrors(null);
  }
- function another(){
-  completed.current=false;pendingRef.current=null;uncertain.current=false;setResult(null);setData({});setError("");setErrors(null);
- }
- const locked=Boolean(pending)||busy;
+ function another(){completed.current=false;pendingRef.current=null;uncertain.current=false;setResult(null);setData({});setError("");setErrors(null);}
  const products=(lists.products||[]).filter(p=>p.is_active&&p.tracking_mode==="SERIALIZED"&&(!category||String(p.category??p.category_id)===category)&&(!manufacturer||String(p.manufacturer??p.manufacturer_id)===manufacturer));
- const product=products.find(p=>String(p.id)===String(data.product_model_id));
+ const product=(lists.products||[]).find(p=>String(p.id)===String(data.product_model_id));
  const warehouses=(lists.warehouses||[]).filter(w=>w.is_active);
  const locations=(lists.locations||[]).filter(l=>l.is_active&&String(l.warehouse_id)===String(data.warehouse_id));
+ const selectedWarehouse=(lists.warehouses||[]).find(w=>String(w.id)===String(pending?.warehouse_id||data.warehouse_id));
+ const selectedLocation=(lists.locations||[]).find(l=>String(l.id)===String(pending?.destination_location_id||data.destination_location_id));
  function fieldError(key){return errors?.[key]?<small className="error" id={id+"-"+key+"-error"} role="alert">{errorMessages(errors[key]).join(" ")}</small>:null;}
  function select(label,key,items,caption,reference){
-  return <div className="editor-field"><label htmlFor={id+"-"+key}>{label}</label>
-   <select ref={reference} id={id+"-"+key} required value={data[key]||""} disabled={locked} aria-invalid={Boolean(errors?.[key])} aria-describedby={errors?.[key]?id+"-"+key+"-error":undefined} onChange={e=>update(key,e.target.value)}>
-    <option value="">Choose {label.toLowerCase()}</option>{items.map(item=><option key={item.id} value={item.id}>{caption(item)}</option>)}
-   </select>{fieldError(key)}</div>;
+  return <div className="editor-field is-required"><label htmlFor={id+"-"+key}>{label}</label><select ref={reference} id={id+"-"+key} required value={data[key]||""} aria-invalid={Boolean(errors?.[key])} aria-describedby={errors?.[key]?id+"-"+key+"-error":undefined} onChange={e=>update(key,e.target.value)}><option value="">Select {label.toLowerCase()}</option>{items.map(item=><option key={item.id} value={item.id}>{caption(item)}</option>)}</select>{fieldError(key)}</div>;
  }
  function text(label,key,{required=true,max=500,textarea=false}={}){
-  const props={id:id+"-"+key,value:data[key]||"",required,maxLength:max,disabled:locked,"aria-invalid":Boolean(errors?.[key]),"aria-describedby":errors?.[key]?id+"-"+key+"-error":undefined,onChange:e=>update(key,e.target.value)};
-  return <div className="editor-field"><label htmlFor={props.id}>{label}</label>{textarea?<textarea {...props} rows={3}/>:<input {...props}/>} {fieldError(key)}</div>;
+  const props={id:id+"-"+key,value:data[key]||"",required,maxLength:max,"aria-invalid":Boolean(errors?.[key]),"aria-describedby":errors?.[key]?id+"-"+key+"-error":undefined,onChange:e=>update(key,e.target.value)};
+  return <div className={"editor-field"+(required?" is-required":"")}><label htmlFor={props.id}>{label}</label>{textarea?<textarea {...props} rows={2}/>:<input {...props}/>} {fieldError(key)}</div>;
  }
- return <section className="serialized-registration">
-  <h2>Register New Asset</h2>
-  {!permitted?<p role="alert">Manual asset registration is disabled or you do not have the required permissions.</p>:<>
-   {error&&<p className="notice error" role="alert">{error}</p>}
-   {errors&&<div className="notice error" role="alert">{errorMessages(errors).filter(Boolean).map((message,i)=><p key={i}>{message}</p>)}</div>}
-   {result?<div ref={success}><RegistrationReceipt result={result}/>{allowAnother&&<button type="button" onClick={another}>Register another asset</button>}</div>:loading?<p role="status">Loading registration choices…</p>:lookupError?<div role="alert"><p>{lookupError}</p><button type="button" onClick={()=>setLookupRevision(x=>x+1)}>Retry loading choices</button></div>:<>
-    <form className="registration-form" onSubmit={prepare}>
-     <div className="registration-fields">
-      <div className="editor-field"><label htmlFor={id+"-category"}>Category filter</label><select id={id+"-category"} value={category} disabled={locked} onChange={e=>{setCategory(e.target.value);update("product_model_id","");}}><option value="">All categories</option>{(lists.categories||[]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-      <div className="editor-field"><label htmlFor={id+"-manufacturer"}>Manufacturer filter</label><select id={id+"-manufacturer"} value={manufacturer} disabled={locked} onChange={e=>{setManufacturer(e.target.value);update("product_model_id","");}}><option value="">All manufacturers</option>{(lists.manufacturers||[]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-      {select("Product model","product_model_id",products,p=>p.sku_code+" — "+p.name,first)}
-      {product&&<p className="registration-wide">Catalog specifications: {JSON.stringify(Object.fromEntries(Object.entries(product).filter(([k,v])=>["model_number","part_number","capacity_bytes","memory_generation","interface_type","speed_value","speed_unit","size_value","size_unit","port_count"].includes(k)&&v)))}</p>}
-      {text("Device name","device_name",{max:200})}
-      {text("Serial number (optional)","serial_raw",{required:false,max:200})}
-      {text("Description (optional)","description",{required:false,max:4000,textarea:true})}
+ return <section className={"serialized-registration"+(embedded?" embedded-registration":"")}>
+  {!embedded&&<header className="registration-inline-heading"><span className="registration-header-icon"><EquipmentIcon/></span><div><h2>Register New Asset</h2><p>Add equipment with a traceable initial stock receipt.</p></div></header>}
+  {!embedded&&<RegistrationProgress step={step}/>}
+  {!permitted?<p role="alert" className="registration-error-banner">Manual asset registration is disabled or you do not have the required permissions.</p>:<>
+   {error&&<p className="registration-error-banner" role="alert">{error}</p>}
+   {errors&&<div className="registration-field-summary" role="alert">{registrationErrors(errors).filter(Boolean).map((message,i)=><p key={i}>{message}</p>)}</div>}
+   {result?<div ref={success}><RegistrationReceipt result={result}/>{allowAnother&&<button className="primary" type="button" onClick={another}>Register another asset</button>}</div>:loading?<div role="status" className="registration-loading"><span className="spinner"/><p>Loading registration choices…</p></div>:lookupError?<div className="registration-error-banner" role="alert"><p>{lookupError}</p><button type="button" onClick={()=>setLookupRevision(x=>x+1)}>Retry loading choices</button></div>:pending?
+    <RegistrationReview pending={pending} product={product} warehouse={selectedWarehouse} location={selectedLocation} categories={lists.categories} manufacturers={lists.manufacturers} headingRef={reviewHeading}/>:
+    <form ref={formElement} id={id+"-form"} className="registration-form" onSubmit={prepare}>
+     <RegistrationSection number="01" title="Product information" description="Choose an existing serialized product model.">
+      <div className="editor-field"><label htmlFor={id+"-category"}>Category filter</label><select id={id+"-category"} value={category} onChange={e=>{setCategory(e.target.value);update("product_model_id","");}}><option value="">All categories</option>{(lists.categories||[]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+      <div className="editor-field"><label htmlFor={id+"-manufacturer"}>Manufacturer filter</label><select id={id+"-manufacturer"} value={manufacturer} onChange={e=>{setManufacturer(e.target.value);update("product_model_id","");}}><option value="">All manufacturers</option>{(lists.manufacturers||[]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+      <div className="registration-wide">{select("Product model","product_model_id",products,p=>p.sku_code+" — "+p.name,first)}</div>
+      <CatalogSpecifications product={product}/>
+     </RegistrationSection>
+     <RegistrationSection number="02" title="Equipment details" description="Record the name and serial shown on the equipment.">
+      {text("Device name","device_name",{max:200})}{text("Serial number (optional)","serial_raw",{required:false,max:200})}
+     </RegistrationSection>
+     <RegistrationSection number="03" title="Warehouse and location">
       {select("Destination warehouse","warehouse_id",warehouses,w=>w.name)}
       {select("Destination location","destination_location_id",locations,l=>l.name+" ("+l.code+")")}
-      {select("Condition","condition",["NEW","USED","REFURBISHED","BROKEN","UNKNOWN"].map(id=>({id})),p=>p.id)}
-      {select("Stock state","state",["AVAILABLE","QUARANTINED"].map(id=>({id})),p=>p.id)}
+     </RegistrationSection>
+     <RegistrationSection number="04" title="Condition and stock state">
+      {select("Condition","condition",["NEW","USED","REFURBISHED","BROKEN","UNKNOWN"].map(id=>({id})),p=>p.id.charAt(0)+p.id.slice(1).toLowerCase())}
+      {select("Stock state","state",["AVAILABLE","QUARANTINED"].map(id=>({id})),p=>p.id.charAt(0)+p.id.slice(1).toLowerCase())}
+     </RegistrationSection>
+     <RegistrationSection number="05" title="Description and remarks">
+      {text("Description (optional)","description",{required:false,max:4000,textarea:true})}
       {text("Reason / remarks","reason",{textarea:true})}
-      {text("External reference (optional)","external_reference",{required:false,max:160})}
-     </div>
-     <p>Asset tag and registration time are generated by the server when the receipt is posted. Choose an existing product model; create missing catalog records before registration.</p>
-     {!pending&&<button className="primary" type="submit">Review transaction</button>}
+      <div className="registration-wide">{text("External reference (optional)","external_reference",{required:false,max:160})}</div>
+     </RegistrationSection>
     </form>
-    {pending&&<section className="registration-confirmation" role="group" aria-label="Confirm stock transaction">
-     <h3>Confirm stock transaction</h3><pre>{JSON.stringify(pending,null,2)}</pre>
-     <button className="primary" type="button" disabled={busy} onClick={post}>{busy?"Posting…":"Confirm and post"}</button>
-     <button type="button" disabled={busy} onClick={editPending}>Edit request</button>
-    </section>}
-   </>}
+   }
+   {!externalActions&&!result&&!loading&&!lookupError&&<footer className="registration-inline-actions"><span>Required fields are marked <b aria-hidden="true">*</b></span><div>{pending?<><button type="button" disabled={busy} onClick={editPending}>Back to edit</button><button className="primary" type="button" disabled={busy} onClick={post}>{busy?"Registering…":"Confirm & register"}</button></>:<button className="primary" type="submit" form={id+"-form"}>Review registration</button>}</div></footer>}
   </>}
  </section>;
 });

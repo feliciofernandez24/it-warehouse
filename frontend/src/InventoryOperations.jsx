@@ -1,10 +1,12 @@
-import React, {useEffect,useState} from "react";
+import React, {useEffect,useRef,useState} from "react";
 import {api,request,errorMessages} from "./api";
 import {SerializedAssetRegistration} from "./SerializedAssetRegistration";
+import {OperationReview,OperationReceipt} from "./RegistrationPresentation";
 
 const capabilities={register:"receive_stock",receive:"receive_stock",transfer:"transfer_stock",issue:"issue_stock",return:"return_stock"};
 export function InventoryOperations({user}) {
  const [registrationState,setRegistrationState]=useState({busy:false,pending:false}),[action,setAction]=useState("register"),[data,setData]=useState({}),[lists,setLists]=useState({}),[errors,setErrors]=useState(null),[error,setError]=useState(""),[result,setResult]=useState(null),[pending,setPending]=useState(null),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0),[category,setCategory]=useState(""),[manufacturer,setManufacturer]=useState("");
+ const otherInFlight=useRef(false);
  const permitted=(a)=>user.permissions.includes("transactions."+capabilities[a]);
  useEffect(()=>{let active=true;setError("");
  const endpoints={products:["management/product-models","inventory.view_productmodel"],assets:["inventory/assets","inventory.view_asset"],locations:["locations","warehouse.view_storagelocation"],warehouses:["warehouses","warehouse.view_warehouse"],categories:["inventory/categories","inventory.view_assetcategory"],manufacturers:["inventory/manufacturers","inventory.view_manufacturer"],recipients:["transactions/recipients","accounts.view_assetrecipient"],assignments:["transactions/assignments","transactions.view_assetassignment"],balances:["transactions/balances","inventory.view_stockbalance"],movements:["transactions/movements","transactions.view_stockmovement"]};
@@ -45,17 +47,17 @@ export function InventoryOperations({user}) {
  setPending({action,body});
  }catch(e){setError(e.message);}
  }
- async function post(){setBusy(true);setError("");setErrors(null);try{const response=await api.save("/api/transactions/manual/"+pending.action+"/","POST",pending.body);setResult(response);setPending(null);setData({});setRevision(r=>r+1);}catch(e){setErrors(e.details||null);setError(e.message+" Retry uses the same operation key and unchanged values.");}finally{setBusy(false);}}
+ async function post(){if(otherInFlight.current||!pending)return;otherInFlight.current=true;setBusy(true);setError("");setErrors(null);try{const response=await api.save("/api/transactions/manual/"+pending.action+"/","POST",pending.body);setResult(response);setPending(null);setData({});setRevision(r=>r+1);}catch(e){setErrors(e.details||null);setError(e.message+" Retry uses the same operation key and unchanged values.");}finally{otherInFlight.current=false;setBusy(false);}}
  const destinations=(lists.locations||[]).filter(l=>l.is_active&&String(l.warehouse_id)===String(data.warehouse_id));
  const products=(lists.products||[]).filter(p=>p.is_active&&p.tracking_mode===(action==="receive"?"BULK":"SERIALIZED")&&(!category||String(p.category)===category)&&(!manufacturer||String(p.manufacturer)===manufacturer));
  return <section className="panel">
  <div className="toolbar">{Object.keys(capabilities).filter(permitted).map(a=><button key={a} disabled={!!pending||registrationState.busy||registrationState.pending} onClick={()=>{setAction(a);setData({});setResult(null);setError("");}}>{({register:"Register New Asset",receive:"Receive Bulk Stock",transfer:"Transfer Stock",issue:"Issue Equipment",return:"Return Equipment"})[a]}</button>)}</div>
  {error&&<p role="alert" className="notice error">{error}</p>}
  {errors&&<div role="alert">{errorMessages(errors).map((s,i)=><p key={i}>{s}</p>)}</div>}
- {result&&<div role="status">Posted operation {result.operation_key}. Movements: {result.movement_ids.join(", ")}. Assets: {result.assets?.map(a=>a.asset_tag).join(", ")||result.asset_ids.join(", ")||"Bulk inventory"}. {result.receipt?.map(r=><p key={r.id}>Receipt {r.public_id} ? {r.operation_type} ? {r.recorded_at}</p>)} {result.warnings.map(w=><p key={w}>{w}</p>)}</div>}
+ {result&&<OperationReceipt result={result}/>}
  {!Object.keys(capabilities).some(permitted)&&<p>Read-only inventory activity. No stock posting permissions.</p>}
  {action==="register"&&permitted(action)&&<SerializedAssetRegistration user={user} onSuccess={()=>setRevision(r=>r+1)} onStateChange={setRegistrationState}/>}
- {action!=="register"&&permitted(action)&&<form onSubmit={prepare} className="master-form">
+ {action!=="register"&&!pending&&permitted(action)&&<form onSubmit={prepare} className="master-form">
  <h2>{action==="receive"?"Receive Bulk Stock":action==="transfer"?"Transfer Stock":action==="issue"?"Issue Equipment":"Return Equipment"}</h2>
  {action==="receive"&&<>
  <label>Category filter<select aria-label="Category filter" disabled={!!pending} value={category} onChange={e=>{setCategory(e.target.value);set("product_model_id","")}}><option value="">All categories</option>{(lists.categories||[]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
@@ -81,7 +83,7 @@ export function InventoryOperations({user}) {
  {text("Reason / remarks","reason")}{text("External reference (optional)","external_reference","text",false)}
  {!pending&&<button type="submit">Review transaction</button>}
  </form>}
- {pending&&<section role="dialog" aria-label="Confirm stock transaction"><h3>Confirm stock transaction</h3><pre>{JSON.stringify(pending.body,null,2)}</pre><button disabled={busy} onClick={post}>{busy?"Posting…":"Confirm and post"}</button><button disabled={busy} onClick={()=>{if(window.confirm("Cancel this pending request? If a response was lost, verify activity before posting a new operation."))setPending(null)}}>Cancel pending request</button></section>}
+ {pending&&<section role="dialog" aria-label="Confirm stock transaction"><OperationReview pending={pending} lists={lists}/><button disabled={busy} onClick={post}>{busy?"Posting…":"Confirm & post"}</button><button disabled={busy} onClick={()=>{if(window.confirm("Cancel this pending request? If a response was lost, verify activity before posting a new operation."))setPending(null)}}>Back to edit</button></section>}
  <h2>Inventory Activity</h2>
  <button disabled={busy} onClick={()=>setRevision(r=>r+1)}>Refresh activity</button>
  <table><thead><tr>{["Time","Action","Operator","Asset / product","From","To","Quantity"].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{(lists.movements||[]).map(m=><tr key={m.id}><td>{m.recorded_at}</td><td>{m.operation_type}</td><td>{m.operator}</td><td>{m.asset_id?"Asset "+m.asset_id:"Product "+m.product_model_id}</td><td>{m.source_location_id||"—"}</td><td>{m.destination_location_id||"—"}</td><td>{m.quantity}</td></tr>)}</tbody></table>

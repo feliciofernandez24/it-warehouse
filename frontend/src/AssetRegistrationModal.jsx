@@ -1,17 +1,18 @@
 import React,{useId,useLayoutEffect,useRef,useState} from "react";
 import {createPortal} from "react-dom";
-import {SerializedAssetRegistration} from "./SerializedAssetRegistration";
+import {SerializedAssetRegistration,canRegisterAsset} from "./SerializedAssetRegistration";
+import {EquipmentIcon,RegistrationProgress} from "./RegistrationPresentation";
 
 export function AssetRegistrationModal({user,onClose,onSuccess}) {
  const [host]=useState(()=>document.createElement("div"));
- const [state,setState]=useState({busy:false,pending:false,dirty:false});
+ const [state,setState]=useState({busy:false,pending:false,dirty:false,step:"details",loading:true,canSubmit:false});
  const dialog=useRef(null),form=useRef(null),closeButton=useRef(null),close=useRef(onClose);
  const title=useId();close.current=onClose;
  function dismiss(){
   const current=form.current?.getCloseState()||{};
   if(current.busy)return;
   if(current.uncertain){
-   if(!window.confirm("Posting result is unconfirmed for operation "+current.operationKey+". Check Inventory Activity before creating another receipt. Close this form?"))return;
+   if(!window.confirm("Registration may already have completed. Check Inventory Activity before starting another registration. Close this form?"))return;
   }else if(current.dirty&&!window.confirm("Discard unsaved registration changes?"))return;
   close.current();
  }
@@ -40,11 +41,20 @@ export function AssetRegistrationModal({user,onClose,onSuccess}) {
  },[host]);
  return createPortal(<div className="editor-backdrop asset-registration-backdrop">
   <section ref={dialog} role="dialog" aria-modal="true" aria-labelledby={title} tabIndex={-1} className="asset-registration-modal">
-   <header className="asset-registration-header"><div><span className="eyebrow">IT WAREHOUSE</span><h2 id={title}>Register asset</h2></div><button ref={closeButton} type="button" disabled={state.busy} onClick={dismiss} aria-label="Close registration">Close</button></header>
+   <header className="asset-registration-header">
+    <div className="registration-header-main"><span className="registration-header-icon"><EquipmentIcon/></span><div className="registration-header-copy"><span className="eyebrow">IT WAREHOUSE / ASSET MANAGEMENT</span><h2 id={title}>Register asset</h2><p>{state.step==="review"?"Confirm the receiving details before registration.":state.step==="success"?"Your equipment has been added to inventory.":"Add equipment and its initial stock receipt."}</p></div><button ref={closeButton} className="registration-close" type="button" disabled={state.busy} onClick={dismiss} aria-label="Close registration"><span aria-hidden="true"><EquipmentIcon kind="close"/></span><span>Close</span></button></div>
+    <RegistrationProgress step={state.step}/>
+   </header>
    <div className="asset-registration-body" aria-busy={state.busy}>
-    <SerializedAssetRegistration ref={form} user={user} onSuccess={onSuccess} onStateChange={setState} autoFocus allowAnother={false}/>
+    <SerializedAssetRegistration ref={form} user={user} onSuccess={onSuccess} onStateChange={setState} autoFocus allowAnother={false} embedded externalActions/>
    </div>
-   <footer className="asset-registration-footer"><span>{state.busy?"Posting receipt. Please wait.":"Your Assets search and filters stay in place."}</span><button type="button" disabled={state.busy} onClick={dismiss}>Cancel</button></footer>
+   <footer className="asset-registration-footer">
+    <div className="registration-footer-context">{state.step==="review"?<button className="registration-back" type="button" disabled={state.busy} onClick={()=>form.current?.back()}>Back to edit</button>:<span>{state.step==="success"?"Registration complete":<>Required fields are marked <b>*</b></>}</span>}</div>
+    <div className="registration-footer-actions">
+     {state.step!=="success"&&<button type="button" disabled={state.busy} onClick={dismiss}>Cancel</button>}
+     {!canRegisterAsset(user)?null:state.step==="success"?<button className="primary" type="button" onClick={dismiss}>Back to Assets</button>:state.step==="review"?<button className="primary" type="button" disabled={state.busy} onClick={()=>form.current?.confirm()}>{state.busy?"Registering…":"Confirm & register"}</button>:<button className="primary" type="button" disabled={!state.canSubmit||state.busy} onClick={()=>form.current?.review()}>Review registration</button>}
+    </div>
+   </footer>
   </section>
  </div>,host);
 }

@@ -45,28 +45,28 @@ test("assets register button opens Phase 4C modal without redirect",async()=>{
  fireEvent.click(await screen.findByRole("button",{name:"Register asset"}));
  // jsdom does not synchronously dispatch hashchange.
  fireEvent(window,new Event("hashchange"));
- await screen.findByRole("heading",{name:"Register New Asset"});
+ await screen.findByRole("heading",{name:"Register asset"});
  expect(window.location.hash).toBe("#/assets");
  expect(screen.getByRole("dialog",{name:"Register asset"})).toBeInTheDocument();
  expect(screen.queryByText(/Phase 4B will not create/)).not.toBeInTheDocument();
 });
 test("standalone asset editor respects enabled receipt workflow",()=>{
  render(<MasterEditor page="assets" user={user} onClose={vi.fn()} onSaved={vi.fn()}/>);
- expect(screen.getByRole("heading",{name:"Register New Asset"})).toBeInTheDocument();
+ expect(screen.getByRole("heading",{name:"Register asset"})).toBeInTheDocument();
  expect(screen.queryByText(/Registration is unavailable/)).not.toBeInTheDocument();
 });
 test("disabled manual feature stays fail-closed without legacy form",()=>{
  render(<MasterEditor page="assets" user={{...user,manual_inventory_enabled:false}} onClose={vi.fn()} onSaved={vi.fn()}/>);
  expect(screen.getByRole("alert")).toHaveTextContent(/registration is disabled/);
  expect(screen.queryByText(/Phase 4B will not create/)).not.toBeInTheDocument();
- expect(screen.queryByRole("button",{name:"Review transaction"})).not.toBeInTheDocument();
+ expect(screen.queryByRole("button",{name:"Review registration"})).not.toBeInTheDocument();
 });
 test("successful receipt shows generated tag and actual receipt identifier",async()=>{
  api.save.mockResolvedValue({operation_key:"op",movement_ids:[7],asset_ids:[9],assets:[{id:9,asset_tag:"AST-GENERATED"}],receipt:[{id:7,public_id:"receipt-uuid",operation_type:"STOCK_IN",recorded_at:"2026-11-17"}],warnings:[]});
  request.mockImplementation(async url=>({results:url.includes("product-models")?[{id:1,sku_code:"SER",name:"Model",tracking_mode:"SERIALIZED",is_active:true}]:url.includes("/warehouses")?[{id:2,name:"Site",is_active:true}]:url.includes("/locations")?[{id:3,name:"Area",warehouse_id:2,is_active:true}]:[],next:null,count:1}));
  render(<InventoryOperations user={user}/>);await screen.findByRole("option",{name:"SER — Model"});
  for(const [label,value] of [["Product model","1"],["Device name","Device"],["Destination warehouse","2"],["Destination location","3"],["Condition","USED"],["Stock state","AVAILABLE"],["Reason / remarks","Receive"]])fireEvent.change(screen.getByLabelText(label),{target:{value}});
- fireEvent.click(screen.getByRole("button",{name:"Review transaction"}));fireEvent.click(screen.getByRole("button",{name:"Confirm and post"}));
+ fireEvent.click(screen.getByRole("button",{name:"Review registration"}));fireEvent.click(screen.getByRole("button",{name:"Confirm & register"}));
  expect(await screen.findByRole("status")).toHaveTextContent("AST-GENERATED");
  expect(screen.getByText(/Receipt receipt-uuid/)).toBeInTheDocument();
 });
@@ -75,7 +75,7 @@ test("manual form renders field-level server validation",async()=>{
  // Reuse a validated form submission to inspect the structured error rather than invent success.
  request.mockImplementation(async url=>({results:url.includes("product-models")?[{id:1,sku_code:"SER",name:"Model",tracking_mode:"SERIALIZED",is_active:true}]:[],next:null}));
  render(<InventoryOperations user={user}/>);await screen.findByRole("option",{name:"SER — Model"});
- fireEvent.submit(screen.getByRole("button",{name:"Review transaction"}).closest("form"));fireEvent.click(screen.getByRole("button",{name:"Confirm and post"}));
- expect(await screen.findByText("device_name: Required name")).toBeInTheDocument();
- expect(screen.getByText("condition: Choose condition")).toBeInTheDocument();
+ fireEvent.submit(document.querySelector(".registration-form"));fireEvent.click(screen.getByRole("button",{name:"Confirm & register"}));
+ expect(await screen.findByText("Device name: Required name")).toBeInTheDocument();
+ expect(screen.getByText("Condition: Choose condition")).toBeInTheDocument();
 });

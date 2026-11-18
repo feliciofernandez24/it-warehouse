@@ -41,7 +41,7 @@ function fill(dialog){
   fireEvent.change(within(dialog).getByLabelText(label),{target:{value}});
  }
 }
-function review(dialog){fireEvent.click(within(dialog).getByRole("button",{name:"Review transaction"}));}
+function review(dialog){fireEvent.click(within(dialog).getByRole("button",{name:"Review registration"}));}
 test("Assets registration opens an accessible modal and never changes the URL",async()=>{
  const {dialog,container}=await open();
  expect(window.location.hash).toBe("#/assets");expect(dialog).toHaveAttribute("aria-modal","true");expect(container).toHaveAttribute("inert");
@@ -64,7 +64,7 @@ test("dirty close requires confirmation and preserves edits when declined",async
  expect(window.location.hash).toBe("#/assets");
 });
 test("Tab and Shift+Tab wrap inside the modal",async()=>{
- const {dialog}=await open();const cancel=within(dialog).getByRole("button",{name:"Cancel"}),close=within(dialog).getByRole("button",{name:"Close registration"});
+ const {dialog}=await open();const cancel=within(dialog).getByRole("button",{name:"Review registration"}),close=within(dialog).getByRole("button",{name:"Close registration"});
  cancel.focus();fireEvent.keyDown(document,{key:"Tab"});expect(close).toHaveFocus();
  fireEvent.keyDown(document,{key:"Tab",shiftKey:true});expect(cancel).toHaveFocus();
 });
@@ -79,7 +79,7 @@ test("search and filters survive opening and dismissing registration",async()=>{
 });
 test("success uses Phase 4C API, shows tag/receipt and refreshes Assets without closing",async()=>{
  const {dialog}=await open();fill(dialog);review(dialog);
- expect(api.save).not.toHaveBeenCalled();fireEvent.click(within(dialog).getByRole("button",{name:"Confirm and post"}));
+ expect(api.save).not.toHaveBeenCalled();fireEvent.click(within(dialog).getByRole("button",{name:"Confirm & register"}));
  expect(await within(dialog).findByRole("status")).toHaveTextContent("AST-MODAL");
  expect(within(dialog).getByText(/Receipt receipt-modal/)).toBeInTheDocument();
  expect(api.save.mock.calls[0][0]).toBe("/api/transactions/manual/register/");
@@ -95,16 +95,16 @@ test("success uses Phase 4C API, shows tag/receipt and refreshes Assets without 
 });
 test("validation errors stay in the modal and allow correction",async()=>{
  api.save.mockRejectedValueOnce({status:400,message:"Invalid registration",details:{device_name:["Use a meaningful name"]}});
- const {dialog}=await open();fill(dialog);review(dialog);fireEvent.click(within(dialog).getByRole("button",{name:"Confirm and post"}));
- await within(dialog).findByText("device_name: Use a meaningful name");
+ const {dialog}=await open();fill(dialog);review(dialog);fireEvent.click(within(dialog).getByRole("button",{name:"Confirm & register"}));
+ await within(dialog).findByText("Device name: Use a meaningful name");
  expect(dialog).toBeInTheDocument();expect(window.location.hash).toBe("#/assets");
  const name=within(dialog).getByLabelText("Device name");expect(name).toHaveAttribute("aria-invalid","true");expect(name).not.toBeDisabled();
- fireEvent.change(name,{target:{value:"Corrected device"}});review(dialog);fireEvent.click(within(dialog).getByRole("button",{name:"Confirm and post"}));
+ fireEvent.change(name,{target:{value:"Corrected device"}});review(dialog);fireEvent.click(within(dialog).getByRole("button",{name:"Confirm & register"}));
  await within(dialog).findByText(/Receipt receipt-modal/);expect(api.save).toHaveBeenCalledTimes(2);
 });
 test("duplicate clicks are single-flight and closing is blocked while posting",async()=>{
  let finish;api.save.mockImplementation(()=>new Promise(resolve=>{finish=resolve}));
- const {dialog}=await open();fill(dialog);review(dialog);const button=within(dialog).getByRole("button",{name:"Confirm and post"});
+ const {dialog}=await open();fill(dialog);review(dialog);const button=within(dialog).getByRole("button",{name:"Confirm & register"});
  fireEvent.click(button);fireEvent.click(button);
  expect(api.save).toHaveBeenCalledTimes(1);expect(within(dialog).getByRole("button",{name:"Close registration"})).toBeDisabled();
  fireEvent.keyDown(document,{key:"Escape"});expect(dialog).toBeInTheDocument();
@@ -113,22 +113,23 @@ test("duplicate clicks are single-flight and closing is blocked while posting",a
 });
 test("uncertain retry preserves the exact operation key and payload",async()=>{
  api.save.mockRejectedValueOnce(new Error("Connection lost"));
- const {dialog}=await open();fill(dialog);review(dialog);fireEvent.click(within(dialog).getByRole("button",{name:"Confirm and post"}));
- await within(dialog).findByText(/Retry uses the same operation key/);const first=api.save.mock.calls[0][2];
- expect(within(dialog).getByLabelText("Device name")).toBeDisabled();
- fireEvent.click(within(dialog).getByRole("button",{name:"Confirm and post"}));await within(dialog).findByText(/Receipt receipt-modal/);
+ const {dialog}=await open();fill(dialog);review(dialog);fireEvent.click(within(dialog).getByRole("button",{name:"Confirm & register"}));
+ await within(dialog).findByText(/Retry this registration/);const first=api.save.mock.calls[0][2];
+ expect(within(dialog).queryByLabelText("Device name")).not.toBeInTheDocument();
+ expect(within(dialog).getByRole("heading",{name:"Review asset registration"})).toBeInTheDocument();
+ fireEvent.click(within(dialog).getByRole("button",{name:"Confirm & register"}));await within(dialog).findByText(/Receipt receipt-modal/);
  expect(api.save.mock.calls[1][2]).toEqual(first);
 });
 test("feature-disabled modal cannot post or render legacy registration",async()=>{
  api.me.mockResolvedValue({user:{...user,manual_inventory_enabled:false}});
  render(<App/>);fireEvent.click(await screen.findByRole("button",{name:"Register asset"}));
  const dialog=await screen.findByRole("dialog");expect(within(dialog).getByRole("alert")).toHaveTextContent(/registration is disabled/);
- expect(within(dialog).queryByRole("button",{name:"Review transaction"})).not.toBeInTheDocument();expect(api.save).not.toHaveBeenCalled();
+ expect(within(dialog).queryByRole("button",{name:"Review registration"})).not.toBeInTheDocument();expect(api.save).not.toHaveBeenCalled();
 });
 test("Inventory Operations continues to use the same serialized registration component",async()=>{
  render(<InventoryOperations user={user}/>);await screen.findByRole("option",{name:/SER.*Serialized model/});
  const form=screen.getByRole("heading",{name:"Register New Asset"}).closest("section");fill(form);review(form);
- fireEvent.click(within(form).getByRole("button",{name:"Confirm and post"}));await screen.findByText(/Receipt receipt-modal/);
+ fireEvent.click(within(form).getByRole("button",{name:"Confirm & register"}));await screen.findByText(/Receipt receipt-modal/);
  expect(api.save.mock.calls[0][0]).toBe("/api/transactions/manual/register/");
  expect(screen.getByRole("button",{name:"Register another asset"})).toBeInTheDocument();
 });

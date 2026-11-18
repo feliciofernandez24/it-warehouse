@@ -360,7 +360,7 @@ test("asset registration stays disabled without the Phase 4C feature", () => {
     ),
   ).toBeInTheDocument();
   expect(
-    screen.queryByRole("button", { name: "Review transaction" }),
+    screen.queryByRole("button", { name: "Review registration" }),
   ).not.toBeInTheDocument();
 });
 test("catalog create control opens form and refreshes after success", async () => {
